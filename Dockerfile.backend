@@ -1,0 +1,31 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY backend/requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Playwright and Chromium with all required system dependencies
+RUN playwright install --with-deps chromium && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy the entire backend directory
+COPY backend/ .
+
+# Create necessary directories
+RUN mkdir -p storage uploads uploads/screenshots
+
+# Expose port for API
+EXPOSE 8000
+
+# Default command (can be overridden in docker-compose)
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

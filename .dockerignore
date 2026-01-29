@@ -1,0 +1,102 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# Documentation
+README.md
+LICENSE
+*.md
+docs/
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.coverage
+.tox/
+.nox/
+htmlcov/
+venv/
+env/
+ENV/
+.venv
+.virtualenv
+
+# Node.js / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+client/dist/
+client/.vite/
+client/build/
+client/node_modules/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Database volumes
+postgres_data/
+redis_data/
+
+# Uploads
+backend/uploads/
+backend/storage/
+
+# Logs
+logs/
+*.log
+
+# Testing
+.pytest_cache/
+coverage/
+htmlcov/
+test/
+tests/
+**/__tests__/
+
+# CI/CD
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+.github/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+.cache/
+
+# Misc
+*.orig
+.history/

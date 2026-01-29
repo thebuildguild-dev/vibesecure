@@ -1,0 +1,41 @@
+{
+  "name": "vibesecure-client",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Frontend client for VibeSecure, a modern security scanner built for testing and auditing web apps with owner permission.",
+  "author": {
+    "name": "The Build Guild",
+    "email": "info@thebuildguild.dev"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thebuildguild-dev/vibesecure"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js,.jsx",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "firebase": "^12.8.0",
+    "framer-motion": "^11.0.3",
+    "lucide-react": "^0.344.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.22.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "vite": "^5.1.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
