@@ -24,20 +24,14 @@ def _initialize_firebase() -> None:
         except ValueError:
             pass
         
-        if settings.firebase_credentials_json:
-            try:
-                cred_dict = json.loads(settings.firebase_credentials_json)
-                cred = credentials.Certificate(cred_dict)
-            except json.JSONDecodeError as e:
-                raise RuntimeError(f"Invalid Firebase credentials JSON: {str(e)}")
-        elif settings.firebase_service_account_path:
-            if not os.path.exists(settings.firebase_service_account_path):
-                raise FileNotFoundError(
-                    f"Firebase service account file not found: {settings.firebase_service_account_path}"
-                )
-            cred = credentials.Certificate(settings.firebase_service_account_path)
-        else:
-            raise RuntimeError("No Firebase credentials provided")
+        if not settings.firebase_credentials_json:
+            raise RuntimeError("FIREBASE_CREDENTIALS_JSON environment variable is required")
+        
+        try:
+            cred_dict = json.loads(settings.firebase_credentials_json)
+            cred = credentials.Certificate(cred_dict)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Invalid Firebase credentials JSON: {str(e)}")
         
         firebase_admin.initialize_app(cred, {
             'projectId': settings.firebase_project_id,

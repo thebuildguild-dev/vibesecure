@@ -8,6 +8,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    networks:
+      - vibesecure-network
     environment:
       - NODE_ENV=production
       - VITE_API_BASE=${VITE_API_BASE}
@@ -28,6 +30,8 @@ services:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vibesecure-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
@@ -40,6 +44,8 @@ services:
       - "${REDIS_PORT}:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - vibesecure-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -50,12 +56,9 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile.backend
-    command: uvicorn src.main:app --host 0.0.0.0 --port ${FASTAPI_PORT} --reload
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "${FASTAPI_PORT}:8000"
-    volumes:
-      - ./backend:/app
-      - ./backend/secrets:/app/secrets:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
@@ -65,11 +68,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - vibesecure-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 40s
 
   zap:
     image: ghcr.io/zaproxy/zaproxy:stable
@@ -78,6 +85,8 @@ services:
       - "8090:8090"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - vibesecure-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8090"]
       interval: 10s
@@ -96,6 +105,8 @@ services:
       - "host.docker.internal:host-gateway"
     env_file:
       - .env
+    networks:
+      - vibesecure-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -109,3 +120,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  vibesecure-network:
+    driver: bridge

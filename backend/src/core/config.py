@@ -13,7 +13,6 @@ class Settings(BaseSettings):
     debug: bool = False
     database_url: str
     redis_url: str
-    firebase_service_account_path: Optional[str] = None
     firebase_credentials_json: Optional[str] = None
     firebase_project_id: str
     resend_api_key: str
@@ -66,8 +65,8 @@ class Settings(BaseSettings):
             raise RuntimeError("DATABASE_URL environment variable is required")
         if not self.redis_url:
             raise RuntimeError("REDIS_URL environment variable is required")
-        if not self.firebase_service_account_path and not self.firebase_credentials_json:
-            raise RuntimeError("Either FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_CREDENTIALS_JSON environment variable is required")
+        if not self.firebase_credentials_json:
+            raise RuntimeError("FIREBASE_CREDENTIALS_JSON environment variable is required")
         if not self.firebase_project_id:
             raise RuntimeError("FIREBASE_PROJECT_ID environment variable is required")
         if not self.resend_api_key:
