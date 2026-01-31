@@ -613,12 +613,13 @@ class LibraryChecker:
         
         remediation = f"Update {lib.name} to at least version {lib.min_safe_version}."
         
-        if lib.name == "jQuery":
-            remediation += "\n\nMigrate to jQuery 3.x using the jQuery Migrate plugin for compatibility."
-        elif lib.name == "AngularJS":
-            remediation += "\n\nNote: AngularJS (1.x) reached end-of-life. Consider migrating to Angular (2+)."
-        elif lib.name == "Moment.js":
-            remediation += "\n\nNote: Moment.js is in maintenance mode. Consider migrating to Day.js or Luxon."
+        match lib.name:
+            case "jQuery":
+                remediation += "\n\nMigrate to jQuery 3.x using the jQuery Migrate plugin for compatibility."
+            case "AngularJS":
+                remediation += "\n\nNote: AngularJS (1.x) reached end-of-life. Consider migrating to Angular (2+)."
+            case "Moment.js":
+                remediation += "\n\nNote: Moment.js is in maintenance mode. Consider migrating to Day.js or Luxon."
         
         if lib.vulnerability:
             remediation += f"\n\nAddress vulnerability: {lib.vulnerability}"

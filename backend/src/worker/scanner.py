@@ -464,16 +464,17 @@ def parse_cookies_from_headers(headers: Dict[str, str]) -> List[Dict[str, Any]]:
             
             for part in parts[1:]:
                 part = part.strip().lower()
-                if part == "secure":
-                    cookie_data["secure"] = True
-                elif part == "httponly":
-                    cookie_data["httponly"] = True
-                elif part.startswith("samesite="):
-                    cookie_data["samesite"] = part.split("=", 1)[1]
-                elif part.startswith("path="):
-                    cookie_data["path"] = part.split("=", 1)[1]
-                elif part.startswith("domain="):
-                    cookie_data["domain"] = part.split("=", 1)[1]
+                match part:
+                    case "secure":
+                        cookie_data["secure"] = True
+                    case "httponly":
+                        cookie_data["httponly"] = True
+                    case s if s.startswith("samesite="):
+                        cookie_data["samesite"] = s.split("=", 1)[1]
+                    case s if s.startswith("path="):
+                        cookie_data["path"] = s.split("=", 1)[1]
+                    case s if s.startswith("domain="):
+                        cookie_data["domain"] = s.split("=", 1)[1]
         
         if "name" in cookie_data:
             cookies.append(cookie_data)
@@ -621,19 +622,20 @@ def run_passive_scan(
     
     if auth_config:
         auth_type = auth_config.get("type", "").lower()
-        if auth_type == "basic":
-            import base64
-            username = auth_config.get("username", "")
-            password = auth_config.get("password", "")
-            credentials = f"{username}:{password}".encode()
-            b64_credentials = base64.b64encode(credentials).decode()
-            headers["Authorization"] = f"Basic {b64_credentials}"
-        elif auth_type == "bearer":
-            token = auth_config.get("token", "")
-            headers["Authorization"] = f"Bearer {token}"
-        elif auth_type == "cookie":
-            cookie_string = auth_config.get("cookie_string", "")
-            headers["Cookie"] = cookie_string
+        match auth_type:
+            case "basic":
+                import base64
+                username = auth_config.get("username", "")
+                password = auth_config.get("password", "")
+                credentials = f"{username}:{password}".encode()
+                b64_credentials = base64.b64encode(credentials).decode()
+                headers["Authorization"] = f"Basic {b64_credentials}"
+            case "bearer":
+                token = auth_config.get("token", "")
+                headers["Authorization"] = f"Bearer {token}"
+            case "cookie":
+                cookie_string = auth_config.get("cookie_string", "")
+                headers["Cookie"] = cookie_string
     
     pages_scanned = 0
     

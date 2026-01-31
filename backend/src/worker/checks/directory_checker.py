@@ -408,14 +408,15 @@ Or via web.config:
 ```
 """
         
-        if server_type == "Apache":
-            return f"{base_advice}\n{apache_advice}"
-        elif server_type == "nginx":
-            return f"{base_advice}\n{nginx_advice}"
-        elif server_type == "IIS":
-            return f"{base_advice}\n{iis_advice}"
-        else:
-            return f"{base_advice}\n{apache_advice}\n{nginx_advice}\n{iis_advice}"
+        match server_type:
+            case "Apache":
+                return f"{base_advice}\n{apache_advice}"
+            case "nginx":
+                return f"{base_advice}\n{nginx_advice}"
+            case "IIS":
+                return f"{base_advice}\n{iis_advice}"
+            case _:
+                return f"{base_advice}\n{apache_advice}\n{nginx_advice}\n{iis_advice}"
     
     def _create_summary_finding(self) -> None:
         dir_list = ", ".join([d.path for d in self.exposed_directories[:5]])

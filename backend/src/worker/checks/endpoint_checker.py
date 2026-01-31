@@ -358,14 +358,15 @@ class EndpointChecker:
         
         remediation = remediation_map.get(category, "Restrict access to this endpoint or remove it from the web-accessible directory.")
         
-        if severity == "critical":
-            title = f"Critical Exposure: {path}"
-        elif severity == "high":
-            title = f"Sensitive Endpoint Exposed: {path}"
-        elif severity == "medium":
-            title = f"Potentially Sensitive Endpoint: {path}"
-        else:
-            title = f"Endpoint Accessible: {path}"
+        match severity:
+            case "critical":
+                title = f"Critical Exposure: {path}"
+            case "high":
+                title = f"Sensitive Endpoint Exposed: {path}"
+            case "medium":
+                title = f"Potentially Sensitive Endpoint: {path}"
+            case _:
+                title = f"Endpoint Accessible: {path}"
         
         if severity == "info" and path in ("/robots.txt", "/sitemap.xml", "/security.txt", "/.well-known/security.txt"):
             return

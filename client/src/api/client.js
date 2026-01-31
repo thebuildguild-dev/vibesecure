@@ -11,49 +11,66 @@ class APIError extends Error {
 }
 
 async function fetchWithAuth(endpoint, options = {}) {
-  const { responseType, ...fetchOptions } = options;
+  const { responseType, timeout = 10000, ...fetchOptions } = options;
+
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
 
   const headers = {
     "Content-Type": "application/json",
     ...fetchOptions.headers,
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...fetchOptions,
-    headers,
-    credentials: "include",
-  });
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...fetchOptions,
+      headers,
+      credentials: "include",
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
 
-    if (response.status === 403) {
-      const errorType = errorData.detail?.type || errorData.type;
+      if (response.status === 403) {
+        const errorType = errorData.detail?.type || errorData.type;
+        throw new APIError(
+          errorData.detail?.message || errorData.message || "Forbidden",
+          403,
+          errorType,
+        );
+      }
+
+      let errorMessage = "Request failed";
+      if (typeof errorData.detail === "object" && errorData.detail !== null) {
+        errorMessage =
+          errorData.detail.message || JSON.stringify(errorData.detail);
+      } else if (typeof errorData.detail === "string") {
+        errorMessage = errorData.detail;
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      }
+
       throw new APIError(
-        errorData.detail?.message || errorData.message || "Forbidden",
-        403,
-        errorType,
+        errorMessage,
+        response.status,
+        errorData.detail?.error,
       );
     }
 
-    let errorMessage = "Request failed";
-    if (typeof errorData.detail === "object" && errorData.detail !== null) {
-      errorMessage =
-        errorData.detail.message || JSON.stringify(errorData.detail);
-    } else if (typeof errorData.detail === "string") {
-      errorMessage = errorData.detail;
-    } else if (errorData.message) {
-      errorMessage = errorData.message;
+    if (responseType === "blob") {
+      return response.blob();
     }
 
-    throw new APIError(errorMessage, response.status, errorData.detail?.error);
+    return response.json();
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Request timed out");
+    }
+    throw error;
+  } finally {
+    clearTimeout(id);
   }
-
-  if (responseType === "blob") {
-    return response.blob();
-  }
-
-  return response.json();
 }
 
 export const auth = {

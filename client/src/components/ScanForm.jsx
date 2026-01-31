@@ -158,13 +158,19 @@ export default function ScanForm({ onScanCreated }) {
 
       if (useAuth) {
         options.auth = { type: authType };
-        if (authType === "basic") {
-          options.auth.username = authUsername;
-          options.auth.password = authPassword;
-        } else if (authType === "bearer") {
-          options.auth.token = authToken;
-        } else if (authType === "cookie") {
-          options.auth.cookie = authCookie;
+        switch (authType) {
+          case "basic":
+            options.auth.username = authUsername;
+            options.auth.password = authPassword;
+            break;
+          case "bearer":
+            options.auth.token = authToken;
+            break;
+          case "cookie":
+            options.auth.cookie = authCookie;
+            break;
+          default:
+            break;
         }
       }
 
