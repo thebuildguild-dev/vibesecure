@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Target,
   Lock,
-  Shield,
+  Radar,
   AlertCircle,
   ChevronDown,
   ChevronUp,
@@ -342,7 +342,7 @@ export default function ScanForm({ onScanCreated }) {
                           htmlFor="allowActive"
                           className="font-mono font-semibold text-[var(--accent-warning)] cursor-pointer flex items-center gap-2 mb-1"
                         >
-                          <Shield className="w-4 h-4" />
+                          <Radar className="w-4 h-4" />
                           Enable Active Scanning (OWASP ZAP)
                         </label>
                         <p className="text-xs text-[var(--text-tertiary)]">

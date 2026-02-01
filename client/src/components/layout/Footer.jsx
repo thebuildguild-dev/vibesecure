@@ -1,4 +1,4 @@
-import { Shield, Github, Mail } from "lucide-react";
+import { Radar, Github, Mail } from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -9,7 +9,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Shield className="w-6 h-6 text-[var(--accent-verified)]" />
+              <Radar className="w-6 h-6 text-[var(--accent-verified)]" />
               <span className="text-lg sm:text-xl font-mono font-bold">
                 VIBE
                 <span className="text-[var(--accent-verified)]">SECURE</span>
@@ -207,7 +207,7 @@ export default function Footer() {
         <div className="mt-6 sm:mt-8 pt-6 border-t border-slate-700">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
             <p className="text-xs text-[var(--text-tertiary)] font-mono text-center sm:text-left">
-              © {currentYear} VibeSecure. Ethical security testing platform.
+              © {currentYear} VibeSecure. AI-driven ethical security scanning.
             </p>
             <p className="text-xs text-[var(--text-tertiary)] font-mono text-center sm:text-right">
               Built with ❤️ by The Build Guild

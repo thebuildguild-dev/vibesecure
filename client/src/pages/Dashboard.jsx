@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   Lock,
-  Shield,
+  ScanLine,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -97,8 +97,9 @@ export default function Dashboard() {
             <SectionTitle
               icon={<Lock className="w-4 h-4 sm:w-5 sm:h-5" />}
               className="mb-3 sm:mb-4"
+              titleSize="text-sm sm:text-base"
             >
-              <span className="text-sm sm:text-base">Verified Domains</span>
+              Verified Domains
             </SectionTitle>
 
             {loading ? (
@@ -132,10 +133,11 @@ export default function Dashboard() {
           {/* Recent Scans */}
           <Card className="hidden lg:block">
             <SectionTitle
-              icon={<Shield className="w-4 h-4 sm:w-5 sm:h-5" />}
+              icon={<ScanLine className="w-4 h-4 sm:w-5 sm:h-5" />}
               className="mb-3 sm:mb-4"
+              titleSize="text-sm sm:text-base"
             >
-              <span className="text-sm sm:text-base">Recent Scans</span>
+              Recent Scans
             </SectionTitle>
 
             {loading ? (

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  Shield,
+  Radar,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -635,7 +635,7 @@ export default function ScanDetail() {
           transition={{ delay: 0.2 }}
           className="space-y-4 sm:space-y-6"
         >
-          <SectionTitle icon={<Shield className="w-5 h-5 sm:w-6 sm:h-6" />}>
+          <SectionTitle icon={<Radar className="w-5 h-5 sm:w-6 sm:h-6" />}>
             <span className="text-xl sm:text-2xl">Security Findings</span>
           </SectionTitle>
 

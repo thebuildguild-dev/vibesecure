@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Shield, Lock, Zap, Eye, AlertTriangle } from "lucide-react";
+import { Radar, Lock, Zap, Eye, AlertTriangle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Card, Badge } from "../components/ui";
 import Footer from "../components/layout/Footer";
@@ -22,7 +22,7 @@ export default function Landing() {
 
   const features = [
     {
-      icon: Shield,
+      icon: Radar,
       title: "Domain Verification Required",
       description: "Prove ownership before scanning with DNS/file verification",
       color: "var(--accent-verified)",
@@ -73,7 +73,7 @@ export default function Landing() {
             className="mb-6 sm:mb-8"
           >
             <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-              <Shield
+              <Radar
                 className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 text-[var(--accent-verified)]"
                 strokeWidth={1.5}
               />

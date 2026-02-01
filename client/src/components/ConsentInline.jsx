@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Copy,
   Check,
-  Shield,
+  Radar,
   FileText,
   AlertTriangle,
   AlertCircle,
@@ -76,7 +76,7 @@ export default function ConsentInline({ domain, onConsentVerified, onCancel }) {
         animate={{ opacity: 1, scale: 1 }}
         className="terminal-panel-elevated text-center py-12"
       >
-        <Shield className="w-24 h-24 text-[var(--accent-warning)] mx-auto mb-6" />
+        <Radar className="w-24 h-24 text-[var(--accent-warning)] mx-auto mb-6" />
         <h2 className="text-3xl font-mono font-bold text-[var(--accent-warning)] mb-2">
           Consent Verified!
         </h2>
@@ -220,7 +220,7 @@ export default function ConsentInline({ domain, onConsentVerified, onCancel }) {
                 </>
               ) : (
                 <>
-                  <Shield className="w-5 h-5" />
+                  <Radar className="w-5 h-5" />
                   Check Consent File
                 </>
               )}

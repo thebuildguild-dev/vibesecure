@@ -2,16 +2,16 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  Shield,
+  Radar,
   User,
   Mail,
   CheckCircle,
   XCircle,
-  Key,
+  Fingerprint,
   LogOut,
+  IdCard,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { auth as authAPI } from "../api/client";
 import { MainLayout } from "../components/layout";
 import { Card, Button, Badge, SectionTitle } from "../components/ui";
 
@@ -116,7 +116,7 @@ export default function Profile() {
 
                   {/* User ID */}
                   <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-[var(--bg-tertiary)] rounded-lg border border-slate-700">
-                    <Key className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--accent-info)] mt-0.5 flex-shrink-0" />
+                    <IdCard className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--accent-info)] mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-[var(--text-tertiary)] font-mono mb-1">
                         USER ID
@@ -133,7 +133,7 @@ export default function Profile() {
                   <Button
                     onClick={() => navigate("/dashboard")}
                     variant="primary"
-                    icon={<Shield className="w-4 h-4" />}
+                    icon={<Radar className="w-4 h-4" />}
                     fullWidth
                     className="sm:flex-1"
                   >
@@ -164,7 +164,7 @@ export default function Profile() {
         >
           <Card>
             <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-              <Shield className="w-5 h-5 text-[var(--accent-verified)] mt-1 flex-shrink-0" />
+              <Fingerprint className="w-5 h-5 text-[var(--accent-verified)] mt-1 flex-shrink-0" />
               <div className="flex-1">
                 <h3 className="text-base sm:text-lg font-semibold text-[var(--text-primary)] mb-2 font-display">
                   Authentication Provider

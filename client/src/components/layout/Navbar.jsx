@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Shield, LogOut, User, Menu, X } from "lucide-react";
+import { Radar, LogOut, User, Menu, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
 export default function Navbar({ showProfile = true }) {
@@ -27,7 +27,7 @@ export default function Navbar({ showProfile = true }) {
             onClick={() => navigate("/dashboard")}
             className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity"
           >
-            <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-[var(--accent-verified)]" />
+            <Radar className="w-6 h-6 sm:w-8 sm:h-8 text-[var(--accent-verified)]" />
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-mono font-bold tracking-wider">
               VIBE
               <span className="text-[var(--accent-verified)]">SECURE</span>

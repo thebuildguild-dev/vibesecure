@@ -9,6 +9,7 @@ import {
   Globe,
   AlertCircle,
   CheckCircle,
+  Info,
 } from "lucide-react";
 
 export default function DomainVerificationInline({
@@ -435,8 +436,8 @@ export default function DomainVerificationInline({
             )}
           </div>
 
-          <div className="flex items-start gap-2 text-xs text-[var(--text-tertiary)] bg-[var(--bg-tertiary)] rounded p-3">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <div className="flex items-center gap-2 text-xs text-[var(--text-tertiary)] bg-[var(--bg-tertiary)] rounded p-3">
+            <Info className="w-4 h-4 flex-shrink-0" />
             <p>
               After deploying the token using any method above, click "Verify
               Domain Ownership" to complete the verification process.
