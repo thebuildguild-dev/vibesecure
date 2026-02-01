@@ -379,7 +379,7 @@ Modern Python async backend (FastAPI + Celery) with React SPA frontend, PostgreS
    - Add necessary Firebase, Database, and API keys.
 3. **Start Services**
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
 4. **Access**
    - API: http://localhost:8000

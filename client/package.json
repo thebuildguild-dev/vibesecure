@@ -1,6 +1,6 @@
 {
   "name": "vibesecure-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Frontend client for VibeSecure, a modern security scanner built for testing and auditing web apps with owner permission.",
   "author": {
@@ -22,7 +22,7 @@
   "dependencies": {
     "firebase": "^12.8.0",
     "framer-motion": "^11.0.3",
-    "lucide-react": "^0.344.0",
+    "lucide-react": "^0.563.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.22.0"
@@ -32,7 +32,7 @@
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
-    "vite": "^5.1.3"
+    "vite": "^7.3.1"
   },
   "engines": {
     "node": ">=18.0.0",
