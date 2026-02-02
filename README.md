@@ -9,7 +9,7 @@
 - [Shakshi Kotwala](https://github.com/Shakshi-Kotwala)
 - Kartavya Kumar
 
-**[Watch Demo Video](https://youtu.be/5bEbh1KOYpE)**
+**[Watch Demo Video](https://youtu.be/40hJxE1rz_k)**
 
 ---
 
