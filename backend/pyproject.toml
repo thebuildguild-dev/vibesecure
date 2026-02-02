@@ -1,6 +1,6 @@
 [project]
 name = "vibesecure-backend"
-version = "1.0.0"
+version = "1.0.2"
 description = "Backend API for VibeSecure, a modern security scanner built for testing and auditing web apps with owner permission."
 authors = [
     {name = "The Build Guild", email = "info@thebuildguild.dev"}

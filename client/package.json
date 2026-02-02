@@ -1,6 +1,6 @@
 {
   "name": "vibesecure-client",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "description": "Frontend client for VibeSecure, a modern security scanner built for testing and auditing web apps with owner permission.",
   "author": {
