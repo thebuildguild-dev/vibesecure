@@ -1,12 +1,13 @@
 import json
 import logging
+import time
 from typing import List, Optional, Dict, Any
 from urllib.parse import urlparse
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
-from sqlmodel import Session, select
+from sqlmodel import Session, select, SQLModel
 
 from src.auth import get_current_user
 
@@ -34,7 +35,10 @@ from src.core.config import settings
 from src.utils.reports import generate_json_report, generate_pdf_report
 from src.utils.cache import cache, CacheKeys
 from src.utils.verification import save_verification_request, domain_is_verified
-from sqlmodel import SQLModel
+from src.utils.errors import (
+    invalid_url_error,
+    active_consent_required_error
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +52,17 @@ except ImportError:
 router = APIRouter(tags=["scans"])
 
 
+def get_user_scan(session: Session, scan_id: str, user_email: str) -> Scan:
+    scan = db_get_scan(session, scan_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    
+    if scan.user_email != user_email:
+        raise HTTPException(status_code=403, detail="Access denied to this scan")
+    
+    return scan
+
+
 @router.post("/scans", response_model=ScanCreateResponse)
 def create_scan(
     scan: ScanCreate,
@@ -59,14 +74,7 @@ def create_scan(
     domain = parsed_url.netloc.lower()
     
     if not domain:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "invalid_url",
-                "message": "Invalid URL provided. Please provide a valid URL with domain.",
-                "url": scan.url
-            }
-        )
+        raise invalid_url_error(scan.url)
     
     if parsed_url.scheme == "http":
         logger.warning(f"User {user_email} is scanning HTTP (not HTTPS) domain: {domain}")
@@ -80,7 +88,7 @@ def create_scan(
             select(DomainVerification)
             .where(DomainVerification.domain == domain)
             .where(DomainVerification.user_email == user_email)
-            .where(DomainVerification.token_expires_at > datetime.utcnow())
+            .where(DomainVerification.token_expires_at > datetime.now(timezone.utc))
             .where(DomainVerification.verified == False)
             .order_by(DomainVerification.token_created_at.desc())
         ).first()
@@ -181,25 +189,7 @@ def create_scan(
         
         if not consent:
             logger.error(f"Active scanning BLOCKED for {domain} - no consent found")
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "error": "active_consent_required",
-                    "message": f"Active scanning requires explicit consent for {domain}. Please verify consent before enabling active scans.",
-                    "consent": {
-                        "domain": domain,
-                        "allow_active": False,
-                        "next_steps": [
-                            "1. Request active scan consent: POST /api/consent/request with domain",
-                            "2. Place consent file at /.well-known/vibesecure-consent.txt",
-                            "3. Verify consent: POST /api/consent/check with domain",
-                            "4. Retry scan with allow_active: true"
-                        ],
-                        "consent_file_path": "/.well-known/vibesecure-consent.txt",
-                        "consent_file_content": f"vibesecure-active-consent=YES\ndomain={domain}\nrequested_by={user_email}\nconsent_date={datetime.utcnow().strftime('%Y-%m-%d')}\n"
-                    }
-                }
-            )
+            raise active_consent_required_error(domain, user_email)
     
     db_scan = db_create_scan(session, scan)
     db_scan.user_email = user_email
@@ -252,14 +242,7 @@ def get_scan(
     current_user: dict = Depends(get_current_user)
 ):
     user_email = current_user["email"]
-    
-    scan = db_get_scan(session, scan_id)
-    if not scan:
-        raise HTTPException(status_code=404, detail="Scan not found")
-    
-    if scan.user_email != user_email:
-        raise HTTPException(status_code=403, detail="Access denied to this scan")
-    
+    scan = get_user_scan(session, scan_id, user_email)
     scan_detail = ScanDetail.from_scan(scan)
     return scan_detail
 
@@ -271,14 +254,7 @@ def get_scan_findings(
     current_user: dict = Depends(get_current_user)
 ):
     user_email = current_user["email"]
-    
-    scan = db_get_scan(session, scan_id)
-    if not scan:
-        raise HTTPException(status_code=404, detail="Scan not found")
-    
-    if scan.user_email != user_email:
-        raise HTTPException(status_code=403, detail="Access denied to this scan")
-    
+    get_user_scan(session, scan_id, user_email)
     findings = get_findings_for_scan(session, scan_id)
     return findings
 
@@ -291,13 +267,7 @@ def create_finding(
     current_user: dict = Depends(get_current_user)
 ):
     user_email = current_user["email"]
-    
-    scan = db_get_scan(session, scan_id)
-    if not scan:
-        raise HTTPException(status_code=404, detail="Scan not found")
-    
-    if scan.user_email != user_email:
-        raise HTTPException(status_code=403, detail="Access denied to this scan")
+    get_user_scan(session, scan_id, user_email)
     
     finding.scan_id = scan_id
     return db_create_finding(session, finding)
@@ -347,13 +317,7 @@ def get_scan_report(
     current_user: dict = Depends(get_current_user)
 ):
     user_email = current_user["email"]
-    
-    scan = session.get(Scan, scan_id)
-    if not scan:
-        raise HTTPException(status_code=404, detail=f"Scan {scan_id} not found")
-    
-    if scan.user_email != user_email:
-        raise HTTPException(status_code=403, detail="Access denied to this scan")
+    scan = get_user_scan(session, scan_id, user_email)
     
     if format == "pdf":
         cache_key = CacheKeys.SCAN_REPORT_PDF.format(scan_id=scan_id)
@@ -503,44 +467,61 @@ Format your response as JSON with this structure:
   "recommendations": ["General security best practice 1", "General security best practice 2"]
 }}"""
     
-    try:
-        response = client.models.generate_content(
-            model='gemini-3-flash-preview',
-            contents=prompt
-        )
-        
-        response_text = response.text
-        
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]
-        elif response_text.startswith("```"):
-            response_text = response_text[3:]
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]
-        
-        response_text = response_text.strip()
-        
-        ai_summary = json.loads(response_text)
-        
-        ai_summary["scan_id"] = scan_id
-        ai_summary["url"] = scan.url
-        ai_summary["risk_score"] = scan.risk_score
-        ai_summary["total_findings"] = len(findings)
-        
-        cache.set_json(cache_key, ai_summary, ttl=86400)
-        
-        return JSONResponse(content=ai_summary)
-        
-    except json.JSONDecodeError as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to parse AI response: {str(e)}"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"AI summary generation failed: {str(e)}"
-        )
+    max_retries = 3
+    retry_delay = 1 
+    
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model='gemini-3-flash-preview',
+                contents=prompt
+            )
+            
+            response_text = response.text
+            
+            if response_text.startswith("```json"):
+                response_text = response_text[7:]
+            elif response_text.startswith("```"):
+                response_text = response_text[3:]
+            if response_text.endswith("```"):
+                response_text = response_text[:-3]
+            
+            response_text = response_text.strip()
+            
+            ai_summary = json.loads(response_text)
+            
+            ai_summary["scan_id"] = scan_id
+            ai_summary["url"] = scan.url
+            ai_summary["risk_score"] = scan.risk_score
+            ai_summary["total_findings"] = len(findings)
+            
+            cache.set_json(cache_key, ai_summary, ttl=86400)
+            
+            return JSONResponse(content=ai_summary)
+            
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to parse AI response: {str(e)}"
+            )
+        except Exception as e:
+            error_msg = str(e).lower()
+            is_retryable = any(code in error_msg for code in ['503', '500', '502', '504', '429', 'timeout', 'unavailable'])
+            
+            if attempt < max_retries - 1 and is_retryable:
+                logger.warning(
+                    f"AI summary attempt {attempt + 1} failed with retryable error: {str(e)}. "
+                    f"Retrying in {retry_delay}s..."
+                )
+                time.sleep(retry_delay)
+                retry_delay *= 2 
+                continue
+            
+            logger.error(f"AI summary generation failed after {attempt + 1} attempts: {str(e)}")
+            raise HTTPException(
+                status_code=503 if is_retryable else 500,
+                detail=f"AI summary generation failed: {str(e)}. Please try again later." if is_retryable else f"AI summary generation failed: {str(e)}"
+            )
 
 
 @router.get("/scans/{scan_id}/fix-config")

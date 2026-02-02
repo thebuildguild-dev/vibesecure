@@ -20,24 +20,37 @@ ZAP_TIMEOUT = settings.zap_timeout
 SPIDER_POLL_INTERVAL = settings.zap_spider_poll_interval
 ACTIVE_SCAN_POLL_INTERVAL = settings.zap_active_scan_poll_interval
 RATE_LIMIT_DELAY = settings.zap_rate_limit_delay
+MAX_ZAP_RETRIES = 3
+RETRY_BACKOFF_BASE = 2
 
 
-def zap_api_request(endpoint: str, timeout: int = 10) -> Optional[Dict[str, Any]]:
+def zap_api_request(endpoint: str, timeout: int = 10, max_retries: int = MAX_ZAP_RETRIES) -> Optional[Dict[str, Any]]:
     url = f"{ZAP_BASE_URL}{endpoint}"
     
-    try:
-        response = httpx.get(url, timeout=timeout, verify=False)
-        response.raise_for_status()
-        return response.json()
-    except httpx.TimeoutException:
-        logger.error(f"[ZAP] Timeout accessing {url}")
-        return None
-    except httpx.HTTPError as e:
-        logger.error(f"[ZAP] HTTP error accessing {url}: {e}")
-        return None
-    except Exception as e:
-        logger.error(f"[ZAP] Unexpected error accessing {url}: {e}")
-        return None
+    for attempt in range(max_retries):
+        try:
+            response = httpx.get(url, timeout=timeout, verify=False)
+            response.raise_for_status()
+            return response.json()
+        except httpx.TimeoutException:
+            if attempt < max_retries - 1:
+                backoff = RETRY_BACKOFF_BASE ** attempt
+                time.sleep(backoff)
+            else:
+                logger.error(f"[ZAP] Timeout accessing {url} after {max_retries} attempts")
+                return None
+        except httpx.HTTPError as e:
+            if attempt < max_retries - 1:
+                backoff = RETRY_BACKOFF_BASE ** attempt
+                time.sleep(backoff)
+            else:
+                logger.error(f"[ZAP] HTTP error accessing {url} after {max_retries} attempts: {e}")
+                return None
+        except Exception as e:
+            logger.error(f"[ZAP] Unexpected error accessing {url}: {e}")
+            return None
+    
+    return None
 
 
 def map_zap_risk_to_severity(risk: str) -> str:
@@ -60,8 +73,6 @@ def map_zap_confidence(confidence: str) -> int:
 
 
 def zap_baseline_scan(target_url: str, verification_id: Optional[int] = None) -> List[Dict[str, Any]]:
-    logger.warning(f"[ZAP] Active scan initiated: {target_url} (verification_id={verification_id})")
-    
     findings: List[Dict[str, Any]] = []
     scan_start_time = time.time()
     
@@ -71,7 +82,6 @@ def zap_baseline_scan(target_url: str, verification_id: Optional[int] = None) ->
         if not version_response:
             raise RuntimeError("ZAP is not accessible. Ensure ZAP container is running on port 8090.")
         
-        logger.info(f"[ZAP] Connected (version {version_response.get('version', 'unknown')})")
         time.sleep(RATE_LIMIT_DELAY)
         
         encoded_url = quote(target_url, safe='')
@@ -99,7 +109,6 @@ def zap_baseline_scan(target_url: str, verification_id: Optional[int] = None) ->
             raise RuntimeError("Failed to start spider")
         
         spider_scan_id = spider_response.get("scan")
-        logger.info(f"[ZAP] Spider started (scan_id={spider_scan_id})")
         time.sleep(RATE_LIMIT_DELAY)
         
         spider_timeout = 60
@@ -114,11 +123,15 @@ def zap_baseline_scan(target_url: str, verification_id: Optional[int] = None) ->
                 logger.warning(f"[ZAP] Spider timeout after {spider_timeout}s")
                 break
             
-            status_response = zap_api_request(f"/JSON/spider/view/status/?scanId={spider_scan_id}")
+            status_response = zap_api_request(f"/JSON/spider/view/status/?scanId={spider_scan_id}", timeout=20)
             
             if not status_response:
-                logger.warning("[ZAP] Failed to get spider status")
-                break
+                time.sleep(2)
+                status_response = zap_api_request(f"/JSON/spider/view/status/?scanId={spider_scan_id}", timeout=20)
+                
+                if not status_response:
+                    time.sleep(SPIDER_POLL_INTERVAL)
+                    continue
             
             status = int(status_response.get("status", "0"))
             
@@ -134,7 +147,24 @@ def zap_baseline_scan(target_url: str, verification_id: Optional[int] = None) ->
         
         time.sleep(RATE_LIMIT_DELAY)
         
-        logger.warning(f"[ZAP] Starting active scan - generating attack payloads")
+        threads_per_host = settings.zap_threads_per_host
+        thread_config = zap_api_request(
+            f"/JSON/ascan/action/setOptionThreadPerHost/?Integer={threads_per_host}",
+            timeout=10
+        )
+        
+        strength_config = zap_api_request(
+            f"/JSON/ascan/action/setOptionDefaultPolicy/?String=Low",
+            timeout=10
+        )
+        
+        delay_config = zap_api_request(
+            f"/JSON/ascan/action/setOptionDelayInMs/?Integer=500",
+            timeout=10
+        )
+        
+        time.sleep(RATE_LIMIT_DELAY)
+        
         ascan_response = zap_api_request(f"/JSON/ascan/action/scan/?url={encoded_url}")
         
         if not ascan_response:
@@ -145,24 +175,39 @@ def zap_baseline_scan(target_url: str, verification_id: Optional[int] = None) ->
         
         ascan_timeout = ZAP_TIMEOUT - (time.time() - scan_start_time)
         ascan_start = time.time()
+        consecutive_failures = 0
+        max_consecutive_failures = 3
         
         while True:
             if time.time() - scan_start_time > ZAP_TIMEOUT:
-                logger.warning(f"[ZAP] Timeout - stopping scan")
-                zap_api_request(f"/JSON/ascan/action/stop/?scanId={ascan_scan_id}")
+                logger.warning(f"[ZAP] Global timeout ({ZAP_TIMEOUT}s) reached - stopping scan")
+                zap_api_request(f"/JSON/ascan/action/stop/?scanId={ascan_scan_id}", timeout=10, max_retries=1)
                 break
             
             if time.time() - ascan_start > ascan_timeout:
-                logger.warning(f"[ZAP] Active scan timeout - stopping")
-                zap_api_request(f"/JSON/ascan/action/stop/?scanId={ascan_scan_id}")
+                logger.warning(f"[ZAP] Active scan timeout ({ascan_timeout:.1f}s) reached - stopping")
+                zap_api_request(f"/JSON/ascan/action/stop/?scanId={ascan_scan_id}", timeout=10, max_retries=1)
                 break
             
-            status_response = zap_api_request(f"/JSON/ascan/view/status/?scanId={ascan_scan_id}")
+            status_response = zap_api_request(
+                f"/JSON/ascan/view/status/?scanId={ascan_scan_id}", 
+                timeout=45,
+                max_retries=2
+            )
             
             if not status_response:
-                logger.warning("[ZAP] Failed to get active scan status")
-                break
+                consecutive_failures += 1
+                
+                if consecutive_failures >= max_consecutive_failures:
+                    logger.error("[ZAP] Too many consecutive failures, stopping scan")
+                    zap_api_request(f"/JSON/ascan/action/stop/?scanId={ascan_scan_id}", timeout=10, max_retries=1)
+                    break
+                
+                backoff = min(ACTIVE_SCAN_POLL_INTERVAL * (2 ** consecutive_failures), 30)
+                time.sleep(backoff)
+                continue
             
+            consecutive_failures = 0
             status = int(status_response.get("status", "0"))
             
             if status >= 100:
@@ -171,12 +216,16 @@ def zap_baseline_scan(target_url: str, verification_id: Optional[int] = None) ->
             time.sleep(ACTIVE_SCAN_POLL_INTERVAL)
         
         duration = time.time() - scan_start_time
-        logger.info(f"[ZAP] Scan complete ({duration:.1f}s)")
         time.sleep(RATE_LIMIT_DELAY)
-        alerts_response = zap_api_request(f"/JSON/core/view/alerts/?baseurl={encoded_url}", timeout=30)
+        
+        alerts_response = zap_api_request(
+            f"/JSON/core/view/alerts/?baseurl={encoded_url}", 
+            timeout=60,
+            max_retries=3
+        )
         
         if not alerts_response:
-            logger.warning("[ZAP] Failed to fetch alerts")
+            logger.warning("[ZAP] Failed to fetch alerts after retries")
             return findings
         
         alerts = alerts_response.get("alerts", [])
@@ -214,8 +263,6 @@ def zap_baseline_scan(target_url: str, verification_id: Optional[int] = None) ->
             except Exception as e:
                 logger.error(f"[ZAP] Error processing alert: {e}")
                 continue
-        
-        logger.info(f"[ZAP] Processed {len(findings)} findings")
         
     except RuntimeError as e:
         logger.error(f"[ZAP] Scan failed: {e}")

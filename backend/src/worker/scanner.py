@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Set, Optional
 from dataclasses import dataclass, field
 from urllib.parse import urlparse, urljoin
 from urllib.robotparser import RobotFileParser
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 import httpx
 
@@ -231,7 +231,7 @@ def check_ssl_certificate(hostname: str, port: int = 443) -> List[Dict[str, Any]
                 not_after = cert.get("notAfter")
                 if not_after:
                     expiry_date = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z")
-                    days_until_expiry = (expiry_date - datetime.utcnow()).days
+                    days_until_expiry = (expiry_date - datetime.now(timezone.utc)).days
                     
                     if days_until_expiry < 0:
                         findings.append({

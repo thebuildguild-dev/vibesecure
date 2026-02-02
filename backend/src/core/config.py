@@ -41,10 +41,11 @@ class Settings(BaseSettings):
     tls_cert_expiry_warning_days: int = 30
     tls_cert_expiry_critical_days: int = 7
     zap_base_url: str = "http://zap:8090"
-    zap_timeout: int = 120
-    zap_spider_poll_interval: int = 2
-    zap_active_scan_poll_interval: int = 5
-    zap_rate_limit_delay: float = 0.5
+    zap_timeout: int = 180
+    zap_spider_poll_interval: int = 3
+    zap_active_scan_poll_interval: int = 8
+    zap_rate_limit_delay: float = 1.0
+    zap_threads_per_host: int = 1
     celery_task_time_limit: int = 600
     celery_task_soft_time_limit: int = 540
     celery_worker_prefetch_multiplier: int = 1

@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -159,9 +159,9 @@ def update_scan_status_db(
         
         scan.status = ScanStatus(status)
         if started:
-            scan.started_at = datetime.utcnow()
+            scan.started_at = datetime.now(timezone.utc)
         if finished:
-            scan.finished_at = datetime.utcnow()
+            scan.finished_at = datetime.now(timezone.utc)
         if result:
             scan.result = json.dumps(result)
         if risk_score is not None:
@@ -257,7 +257,6 @@ def create_findings_http(scan_id: str, findings: list):
                     json=finding,
                 )
                 response.raise_for_status()
-            logger.info(f"Created {len(findings)} findings for scan {scan_id} via HTTP")
     except Exception as e:
         logger.error(f"Failed to create findings via HTTP: {e}")
 
@@ -369,8 +368,12 @@ def process_scan(self, scan_id: int, url: str):
             session.commit()
             return
         
-        now = datetime.utcnow()
-        if verification.token_expires_at < now:
+        now = datetime.now(timezone.utc)
+        token_expires_at = verification.token_expires_at
+        if token_expires_at.tzinfo is None:
+            token_expires_at = token_expires_at.replace(tzinfo=timezone.utc)
+        
+        if token_expires_at < now:
             logger.error(f"[Scan {scan_id}] Verification {verification_id} expired")
             update_scan_status(
                 scan_id,
@@ -571,7 +574,6 @@ def process_scan(self, scan_id: int, url: str):
                     )
                     
                     zap_findings_count = len(zap_findings)
-                    logger.info(f"[Scan {scan_id}] ZAP scan found {zap_findings_count} findings")
                     
                     for finding in zap_findings:
                         if "details" not in finding:
@@ -714,6 +716,6 @@ def health_check(self):
     return {
         "status": "ok",
         "task_id": self.request.id,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "db_mode": "direct" if USE_DIRECT_DB else "http",
     }

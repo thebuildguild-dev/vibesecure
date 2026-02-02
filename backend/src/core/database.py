@@ -23,12 +23,10 @@ def init_db():
     for attempt in range(max_retries):
         try:
             SQLModel.metadata.create_all(engine)
-            logger.info("Database initialized successfully.")
             return
         except OperationalError as e:
             if attempt < max_retries - 1:
                 logger.warning(f"Database connection failed (attempt {attempt + 1}/{max_retries}): {e}")
-                logger.info(f"Retrying in {retry_wait} seconds...")
                 time.sleep(retry_wait)
             else:
                 logger.error("Could not connect to database after multiple retries.")

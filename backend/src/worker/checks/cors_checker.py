@@ -7,11 +7,13 @@ import httpx
 
 try:
     from src.core.config import settings
+    from src.worker.checks.base_checker import BaseSecurityChecker, SecurityFinding
 except ImportError:
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
     from src.core.config import settings
+    from src.worker.checks.base_checker import BaseSecurityChecker, SecurityFinding
 
 logger = logging.getLogger(__name__)
 
@@ -35,26 +37,6 @@ SENSITIVE_HEADERS = {
 }
 
 
-@dataclass
-class CORSFinding:
-    title: str
-    severity: str
-    description: str
-    remediation: str
-    confidence: int = 90
-    path: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "title": self.title,
-            "severity": self.severity,
-            "remediation": self.remediation,
-            "confidence": self.confidence,
-            "path": self.path,
-        }
-
-
 @dataclass 
 class CORSResponse:
     allow_origin: Optional[str] = None
@@ -66,29 +48,23 @@ class CORSResponse:
     vary_origin: bool = False
 
 
-class CORSChecker:
+class CORSChecker(BaseSecurityChecker):
     def __init__(self, target: str, timeout: int = DEFAULT_TIMEOUT):
-        if not target.startswith(("http://", "https://")):
-            target = f"https://{target}"
-        
-        self.target = target
-        self.timeout = timeout
-        self.findings: List[CORSFinding] = []
-        
-        parsed = urlparse(target)
+        super().__init__(target, timeout)
+        parsed = urlparse(self.target)
         self.hostname = parsed.hostname or ""
         self.scheme = parsed.scheme
     
     def run_all_checks(self) -> List[Dict[str, Any]]:
-        self.findings = []
+        self.clear_findings()
         
         for evil_origin in EVIL_ORIGINS:
             self._check_origin(evil_origin)
         
         self._check_preflight()
         
-        logger.info(f"CORS checks for {self.target}: {len(self.findings)} issues found")
-        return [f.to_dict() for f in self.findings]
+        self.logger.info(f"CORS checks for {self.target}: {len(self.findings)} issues found")
+        return self.get_findings()
     
     def _parse_cors_headers(self, headers: httpx.Headers) -> CORSResponse:
         cors = CORSResponse()
@@ -175,7 +151,7 @@ class CORSChecker:
                     dangerous_methods = set(cors.allow_methods) & SENSITIVE_METHODS
                     
                     if dangerous_methods and cors.allow_origin in ("*", "https://evil.com"):
-                        self.findings.append(CORSFinding(
+                        self.findings.append(SecurityFinding(
                             title="CORS Allows Dangerous HTTP Methods",
                             severity="medium",
                             description=f"CORS policy allows dangerous methods ({', '.join(dangerous_methods)}) from untrusted origins",
@@ -190,7 +166,7 @@ class CORSChecker:
                 
 
                 if "*" in cors.allow_headers:
-                    self.findings.append(CORSFinding(
+                    self.findings.append(SecurityFinding(
                         title="CORS Allows All Headers (Wildcard)",
                         severity="medium",
                         description="Access-Control-Allow-Headers is set to wildcard (*), allowing any custom header",
@@ -208,7 +184,7 @@ class CORSChecker:
             return
         
         if cors.allow_credentials:
-            self.findings.append(CORSFinding(
+            self.findings.append(SecurityFinding(
                 title="CORS Misconfiguration: Wildcard with Credentials",
                 severity="medium",
                 description="Server returns Access-Control-Allow-Origin: * with Access-Control-Allow-Credentials: true. While browsers block this combination, it indicates a misconfigured CORS policy.",
@@ -221,7 +197,7 @@ class CORSChecker:
                 },
             ))
         else:
-            self.findings.append(CORSFinding(
+            self.findings.append(SecurityFinding(
                 title="Insecure CORS Configuration: Wildcard Origin",
                 severity="medium",
                 description="Access-Control-Allow-Origin is set to wildcard (*), allowing any website to make cross-origin requests",
@@ -241,7 +217,7 @@ class CORSChecker:
             return
         
         if cors.allow_credentials:
-            self.findings.append(CORSFinding(
+            self.findings.append(SecurityFinding(
                 title="Critical CORS Vulnerability: Origin Reflection with Credentials",
                 severity="high",
                 description=f"Server reflects the Origin header ({origin}) in Access-Control-Allow-Origin AND allows credentials. This allows any website to make authenticated cross-origin requests, potentially stealing sensitive data.",
@@ -255,7 +231,7 @@ class CORSChecker:
                 },
             ))
         else:
-            self.findings.append(CORSFinding(
+            self.findings.append(SecurityFinding(
                 title="Insecure CORS Configuration: Origin Reflection",
                 severity="medium", 
                 description=f"Server reflects the Origin header ({origin}) in Access-Control-Allow-Origin. While credentials are not allowed, this is still a security anti-pattern.",
@@ -270,7 +246,7 @@ class CORSChecker:
             ))
         
         if not cors.vary_origin:
-            self.findings.append(CORSFinding(
+            self.findings.append(SecurityFinding(
                 title="CORS Missing Vary: Origin Header",
                 severity="low",
                 description="When reflecting origins or using dynamic CORS, the Vary: Origin header should be set to prevent cache poisoning",
@@ -283,7 +259,7 @@ class CORSChecker:
     def _add_null_origin_finding(self, cors: CORSResponse) -> None:
         severity = "high" if cors.allow_credentials else "medium"
         
-        self.findings.append(CORSFinding(
+        self.findings.append(SecurityFinding(
             title="Insecure CORS Configuration: Null Origin Allowed",
             severity=severity,
             description="Server allows 'null' origin which can be exploited via sandboxed iframes, data: URLs, or file:// URLs to bypass CORS restrictions",
@@ -347,7 +323,7 @@ def quick_cors_check(target: str) -> Dict[str, Any]:
 
 __all__ = [
     "CORSChecker",
-    "CORSFinding",
+    "SecurityFinding",
     "CORSResponse",
     "check_cors",
     "quick_cors_check",

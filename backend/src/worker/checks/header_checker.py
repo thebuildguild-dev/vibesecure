@@ -8,11 +8,13 @@ import httpx
 
 try:
     from src.core.config import settings
+    from src.worker.checks.base_checker import BaseSecurityChecker, SecurityFinding
 except ImportError:
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
     from src.core.config import settings
+    from src.worker.checks.base_checker import BaseSecurityChecker, SecurityFinding
 
 logger = logging.getLogger(__name__)
 
@@ -82,27 +84,6 @@ SOFTWARE_PATTERNS = [
 
 
 @dataclass
-class HeaderFinding:
-    title: str
-    severity: str
-    description: str
-    remediation: str
-    confidence: int = 85
-    path: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "title": self.title,
-            "severity": self.severity,
-            "description": self.description,
-            "remediation": self.remediation,
-            "confidence": self.confidence,
-            "path": self.path,
-        }
-
-
-@dataclass
 class VersionInfo:
     header_name: str
     header_value: str
@@ -111,25 +92,20 @@ class VersionInfo:
     category: Optional[str] = None
 
 
-class HeaderChecker:
+class HeaderChecker(BaseSecurityChecker):
     def __init__(
         self,
         target: str,
         timeout: int = DEFAULT_TIMEOUT,
     ):
-        if not target.startswith(("http://", "https://")):
-            target = f"https://{target}"
-        
-        self.target = target
-        self.timeout = timeout
-        self.findings: List[HeaderFinding] = []
+        super().__init__(target, timeout)
         self.headers: Dict[str, str] = {}
         self.detected_tech: List[VersionInfo] = []
     
     def run_all_checks(self) -> List[Dict[str, Any]]:
-        logger.info(f"Starting header analysis for {self.target}")
+        self.logger.info(f"Starting header analysis for {self.target}")
         
-        self.findings = []
+        self.clear_findings()
         self.detected_tech = []
         
         if not self._fetch_headers():
@@ -139,9 +115,9 @@ class HeaderChecker:
         self._analyze_all_headers()
         self._create_summary_finding()
         
-        logger.info(f"Header analysis complete. Found {len(self.findings)} issues.")
+        self.logger.info(f"Header analysis complete. Found {len(self.findings)} issues.")
         
-        return [f.to_dict() for f in self.findings]
+        return self.get_findings()
     
     def _fetch_headers(self) -> bool:
         try:
@@ -185,7 +161,7 @@ class HeaderChecker:
                 self.detected_tech.append(version_info)
                 severity = "medium" if version_info.version else base_severity
                 
-                self.findings.append(HeaderFinding(
+                self.findings.append(SecurityFinding(
                     title=f"Version Disclosure: {header_name}",
                     severity=severity,
                     description=(
@@ -204,7 +180,7 @@ class HeaderChecker:
                     },
                 ))
             elif header_value and header_name in ("X-Powered-By", "X-AspNet-Version", "X-AspNetMvc-Version"):
-                self.findings.append(HeaderFinding(
+                self.findings.append(SecurityFinding(
                     title=f"Technology Disclosure: {header_name}",
                     severity="low",
                     description=(
@@ -255,7 +231,7 @@ class HeaderChecker:
         for header_name, description in dangerous_headers.items():
             for h, v in self.headers.items():
                 if h.lower() == header_name.lower():
-                    self.findings.append(HeaderFinding(
+                    self.findings.append(SecurityFinding(
                         title=f"Debug Header Exposed: {header_name}",
                         severity="info",
                         description=f"{description}. Value: `{v[:50]}...`" if len(v) > 50 else f"{description}. Value: `{v}`",
@@ -271,7 +247,7 @@ class HeaderChecker:
             detail_indicators = ["(", "mod_", "OpenSSL", "Ubuntu", "Debian", "CentOS", "Win"]
             if any(indicator in server_header for indicator in detail_indicators):
                 if not any(f.metadata.get("header") == "Server" for f in self.findings):
-                    self.findings.append(HeaderFinding(
+                    self.findings.append(SecurityFinding(
                         title="Verbose Server Header",
                         severity="low",
                         description=(
@@ -360,7 +336,7 @@ class HeaderChecker:
                 for t in self.detected_tech
             ])
             
-            self.findings.append(HeaderFinding(
+            self.findings.append(SecurityFinding(
                 title="Multiple Technology Versions Disclosed",
                 severity="medium",
                 description=(
@@ -441,7 +417,7 @@ def quick_header_check(target: str) -> Dict[str, Any]:
 
 __all__ = [
     "HeaderChecker",
-    "HeaderFinding",
+    "SecurityFinding",
     "VersionInfo",
     "check_headers",
     "quick_header_check",

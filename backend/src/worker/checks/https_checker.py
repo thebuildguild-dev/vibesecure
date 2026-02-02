@@ -1,44 +1,25 @@
 import logging
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse, urlunparse
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import httpx
 
 try:
     from src.core.config import settings
+    from src.worker.checks.base_checker import BaseSecurityChecker, SecurityFinding
 except ImportError:
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
     from src.core.config import settings
+    from src.worker.checks.base_checker import BaseSecurityChecker, SecurityFinding
 
 logger = logging.getLogger(__name__)
 
 
 DEFAULT_TIMEOUT = settings.security_check_default_timeout
 MAX_REDIRECTS = 10
-
-
-@dataclass
-class HTTPSFinding:
-    title: str
-    severity: str
-    description: str
-    remediation: str
-    confidence: int = 90
-    path: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "title": self.title,
-            "severity": self.severity,
-            "description": self.description,
-            "remediation": self.remediation,
-            "confidence": self.confidence,
-            "path": self.path,
-        }
 
 
 @dataclass
@@ -52,11 +33,9 @@ class RedirectInfo:
     hsts_value: Optional[str] = None
 
 
-class HTTPSChecker:
+class HTTPSChecker(BaseSecurityChecker):
     def __init__(self, target: str, timeout: int = DEFAULT_TIMEOUT):
-        self.original_target = target
-        self.timeout = timeout
-        self.findings: List[HTTPSFinding] = []
+        super().__init__(target, timeout)
         self.http_url = self._get_http_url(target)
         self.https_url = self._get_https_url(target)
     
@@ -73,14 +52,14 @@ class HTTPSChecker:
         return urlunparse(parsed._replace(scheme="https"))
     
     def run_all_checks(self) -> List[Dict[str, Any]]:
-        self.findings = []
+        self.clear_findings()
         redirect_info = self._check_http_redirect()
         
         if redirect_info:
             self._analyze_redirect(redirect_info)
         
         self._check_hsts_header()
-        return [f.to_dict() for f in self.findings]
+        return self.get_findings()
     
     def _check_http_redirect(self) -> Optional[RedirectInfo]:
         try:
@@ -154,7 +133,7 @@ class HTTPSChecker:
     def _analyze_redirect(self, info: RedirectInfo) -> None:
         if not info.redirects_to_https:
             if info.final_url.startswith("http://"):
-                self.findings.append(HTTPSFinding(
+                self.add_finding(SecurityFinding(
                     title="Missing HTTP to HTTPS Redirect",
                     severity="high",
                     description=(
@@ -206,7 +185,7 @@ class HTTPSChecker:
                 if r["status_code"] in (302, 303, 307)
             ]
             
-            self.findings.append(HTTPSFinding(
+            self.add_finding(SecurityFinding(
                 title="Temporary HTTPS Redirect (Should Be Permanent)",
                 severity="low",
                 description=(
@@ -230,7 +209,7 @@ class HTTPSChecker:
             ))
         
         if len(info.redirect_chain) > 2:
-            self.findings.append(HTTPSFinding(
+            self.add_finding(SecurityFinding(
                 title="Excessive Redirect Chain",
                 severity="info",
                 description=(
@@ -261,7 +240,7 @@ class HTTPSChecker:
                 hsts = response.headers.get("strict-transport-security")
                 
                 if not hsts:
-                    self.findings.append(HTTPSFinding(
+                    self.add_finding(SecurityFinding(
                         title="Missing HSTS Header",
                         severity="medium",
                         description=(
@@ -307,7 +286,7 @@ class HTTPSChecker:
                 pass
         
         if max_age < 15768000:
-            self.findings.append(HTTPSFinding(
+            self.add_finding(SecurityFinding(
                 title="Weak HSTS Max-Age",
                 severity="low",
                 description=(
@@ -331,7 +310,7 @@ class HTTPSChecker:
             ))
         
         if "includesubdomains" not in hsts_lower:
-            self.findings.append(HTTPSFinding(
+            self.add_finding(SecurityFinding(
                 title="HSTS Missing includeSubDomains",
                 severity="info",
                 description=(
@@ -391,7 +370,7 @@ def quick_https_check(target: str) -> Dict[str, Any]:
 
 __all__ = [
     "HTTPSChecker",
-    "HTTPSFinding",
+    "SecurityFinding",
     "RedirectInfo",
     "check_https_redirect",
     "quick_https_check",

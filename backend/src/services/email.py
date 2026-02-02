@@ -1,5 +1,7 @@
 import logging
+import time
 import resend
+from typing import Optional
 
 from src.core.config import settings
 from src.core.models import get_risk_label
@@ -16,17 +18,24 @@ def get_risk_color(risk_level: str) -> str:
     }
     return colors.get(risk_level, "#6B7280")
 
-def send_scan_complete_email(to_email: str, scan_url: str, risk_score: int, scan_id: int) -> None:
-    try:
-        resend.api_key = settings.resend_api_key
-        
-        risk_level = get_risk_label(risk_score)
-        risk_color = get_risk_color(risk_level)
-        dashboard_url = f"{settings.frontend_url}/scan/{scan_id}"
-        
-        subject = f"Security Scan Complete: {risk_level} Risk Detected"
-        
-        html_body = f"""
+def send_scan_complete_email(
+    to_email: str, 
+    scan_url: str, 
+    risk_score: int, 
+    scan_id: int,
+    max_retries: int = 3
+) -> Optional[str]:
+    resend.api_key = settings.resend_api_key
+    
+    for attempt in range(max_retries):
+        try:
+            risk_level = get_risk_label(risk_score)
+            risk_color = get_risk_color(risk_level)
+            dashboard_url = f"{settings.frontend_url}/scan/{scan_id}"
+            
+            subject = f"Security Scan Complete: {risk_level} Risk Detected"
+            
+            html_body = f"""
         <!DOCTYPE html>
         <html>
         <head>
@@ -98,9 +107,9 @@ def send_scan_complete_email(to_email: str, scan_url: str, risk_score: int, scan
             </div>
         </body>
         </html>
-        """
-        
-        text_body = f"""
+            """
+            
+            text_body = f"""
 VibeSecure Scan Complete
 ------------------------
 
@@ -112,18 +121,43 @@ View full report: {dashboard_url}
 
 ------------------------
 VibeSecure Automated System
-        """
+            """
+            
+            params = {
+                "from": settings.email_from,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_body,
+                "text": text_body
+            }
         
-        params = {
-            "from": settings.email_from,
-            "to": [to_email],
-            "subject": subject,
-            "html": html_body,
-            "text": text_body
-        }
-        
-        response = resend.Emails.send(params)
-        logger.info(f"Scan completion email sent to {to_email} (ID: {response.get('id', 'unknown')})")
-        
-    except Exception as e:
-        logger.error(f"Failed to send scan completion email to {to_email}: {str(e)}")
+            response = resend.Emails.send(params)
+            email_id = response.get('id', 'unknown')
+            return email_id
+            
+        except Exception as e:
+            error_msg = str(e)
+            is_network_error = any([
+                "Failed to resolve" in error_msg,
+                "NameResolutionError" in error_msg,
+                "Max retries exceeded" in error_msg,
+                "Connection" in error_msg,
+                "Timeout" in error_msg
+            ])
+            
+            if is_network_error and attempt < max_retries - 1:
+                backoff = 2 ** attempt
+                logger.warning(
+                    f"Network error sending email to {to_email} (attempt {attempt + 1}/{max_retries}): {error_msg}. "
+                    f"Retrying in {backoff}s..."
+                )
+                time.sleep(backoff)
+            else:
+                logger.error(
+                    f"Failed to send scan completion email to {to_email} "
+                    f"after {attempt + 1} attempt(s): {error_msg}"
+                )
+                if attempt == max_retries - 1:
+                    return None
+    
+    return None

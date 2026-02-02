@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -9,6 +9,8 @@ from src.core.database import get_session
 from src.core.models import DomainVerification
 from src.core.config import settings
 from src.utils.verification import save_verification_request, check_token_on_site
+from src.utils.domain import normalize_domain
+from src.utils.errors import token_exists_error, no_token_found_error
 
 
 router = APIRouter(prefix="/domains", tags=["domains"])
@@ -77,9 +79,7 @@ def request_verification(
     session: Session = Depends(get_session),
     current_user: dict = Depends(get_current_user)
 ):
-    domain = body.domain.lower().strip()
-    domain = domain.replace("http://", "").replace("https://", "")
-    domain = domain.split("/")[0] 
+    domain = normalize_domain(body.domain)
     user_email = current_user["email"]
     
     try:
@@ -87,13 +87,9 @@ def request_verification(
         
         # Handle case where existing unexpired token was found (idempotent behavior)
         if not token:
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "error": "token_exists",
-                    "message": f"An unexpired verification token already exists for {domain}. Use POST /api/domains/verify/check to verify it, or wait for expiry.",
-                    "expires_at": verification_record.token_expires_at.isoformat()
-                }
+            raise token_exists_error(
+                domain,
+                verification_record.token_expires_at.isoformat()
             )
         
         instructions = Instructions(
@@ -130,9 +126,7 @@ def delete_verification_request(
     session: Session = Depends(get_session),
     current_user: dict = Depends(get_current_user)
 ):
-    domain = domain.lower().strip()
-    domain = domain.replace("http://", "").replace("https://", "")
-    domain = domain.split("/")[0]
+    domain = normalize_domain(domain)
     user_email = current_user["email"]
     
     pending_verifications = session.exec(
@@ -189,26 +183,17 @@ def check_verification(
             )
         domain = verification.domain
     elif body.domain:
-        domain = body.domain.lower().strip()
-        domain = domain.replace("http://", "").replace("https://", "")
-        domain = domain.split("/")[0]
+        domain = normalize_domain(body.domain)
         verification = session.exec(
             select(DomainVerification)
             .where(DomainVerification.domain == domain)
             .where(DomainVerification.user_email == user_email)
-            .where(DomainVerification.token_expires_at > datetime.utcnow())
+            .where(DomainVerification.token_expires_at > datetime.now(timezone.utc))
             .order_by(DomainVerification.token_created_at.desc())
         ).first()
         
         if not verification:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "error": "no_token_found",
-                    "message": f"No valid verification request found for {domain}. Please request a token first using POST /api/domains/verify/request",
-                    "domain": domain
-                }
-            )
+            raise no_token_found_error(domain)
     else:
         raise HTTPException(
             status_code=400,
@@ -232,9 +217,7 @@ def get_domain_status(
     session: Session = Depends(get_session),
     current_user: dict = Depends(get_current_user)
 ):
-    domain = domain.lower().strip()
-    domain = domain.replace("http://", "").replace("https://", "")
-    domain = domain.split("/")[0]
+    domain = normalize_domain(domain)
     user_email = current_user["email"]
     
     verification = session.exec(

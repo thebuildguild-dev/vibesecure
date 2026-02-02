@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ class PlaywrightScanner:
         verification_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         logger.info(f"[Playwright] Starting rendering scan for {url}")
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         xhr_endpoints: List[str] = []
         
         async def handle_request(request):
@@ -105,7 +105,7 @@ class PlaywrightScanner:
                 if self.screenshot_enabled:
                     screenshot_path = await self._capture_screenshot(page, url, verification_id)
                 
-                end_time = datetime.utcnow()
+                end_time = datetime.now(timezone.utc)
                 duration_ms = (end_time - start_time).total_seconds() * 1000
                 unique_xhr_endpoints = list(set(xhr_endpoints))
                 
@@ -170,7 +170,7 @@ class PlaywrightScanner:
     ) -> Path:
         parsed = urlparse(url)
         domain = parsed.netloc.replace(':', '_')
-        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
         
         filename = f"{domain}_{timestamp}"
         if verification_id:

@@ -1,7 +1,7 @@
 import ssl
 import socket
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse
 from dataclasses import dataclass, field
@@ -306,7 +306,7 @@ class TLSChecker:
     
     def _check_expiration(self, cert_info: CertificateInfo) -> List[TLSFinding]:
         findings = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         days_until_expiry = (cert_info.not_after - now).days
         
         if days_until_expiry < 0:
@@ -423,7 +423,7 @@ def check_certificate_expiry(target: str, port: int = 443) -> Dict[str, Any]:
     
     try:
         cert_info = checker._get_certificate_info(verify=False)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         days_left = (cert_info.not_after - now).days
         
         return {

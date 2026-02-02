@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -7,7 +7,12 @@ from sqlmodel import Session, select
 from src.auth.dependencies import get_current_user_email
 from src.core.database import get_session
 from src.core.models import Consent, DomainVerification
-from src.utils.consent import check_active_consent, consent_file_url, extract_domain
+from src.utils.consent import (
+    check_active_consent,
+    consent_file_url,
+    generate_consent_file_content
+)
+from src.utils.domain import normalize_domain
 
 router = APIRouter(prefix="/consent", tags=["consent"])
 
@@ -45,10 +50,7 @@ async def request_active_consent(
     user_email: str = Depends(get_current_user_email),
     session: Session = Depends(get_session),
 ):
-    domain = request.domain.strip().lower()
-    
-    if domain.startswith(("http://", "https://")):
-        domain = extract_domain(domain)
+    domain = normalize_domain(request.domain)
     
     verification = session.exec(
         select(DomainVerification)
@@ -63,15 +65,7 @@ async def request_active_consent(
             detail=f"Domain {domain} is not verified. Complete domain verification first at POST /api/domains/verify/request"
         )
     
-    consent_content = f"""vibesecure-active-consent=YES
-domain={domain}
-requested_by={user_email}
-consent_date={datetime.utcnow().strftime('%Y-%m-%d')}
-
-# This file authorizes VibeSecure to perform active security scanning
-# Active scanning generates potentially malicious payloads (SQL injection, XSS, etc.)
-# Only authorize if you have legal permission and understand the risks
-"""
+    consent_content = generate_consent_file_content(domain, user_email)
     
     instructions = ConsentInstructions(
         path="/.well-known/vibesecure-consent.txt",
@@ -92,10 +86,7 @@ async def check_consent(
     user_email: str = Depends(get_current_user_email),
     session: Session = Depends(get_session),
 ):
-    domain = request.domain.strip().lower()
-    
-    if domain.startswith(("http://", "https://")):
-        domain = extract_domain(domain)
+    domain = normalize_domain(request.domain)
     
     verification = session.exec(
         select(DomainVerification)
@@ -128,7 +119,7 @@ async def check_consent(
     
     if existing_consent:
         existing_consent.active_allowed = True
-        existing_consent.verified_at = datetime.utcnow()
+        existing_consent.verified_at = datetime.now(timezone.utc)
         existing_consent.method = "well-known"
         session.add(existing_consent)
         session.commit()
@@ -145,7 +136,7 @@ async def check_consent(
             domain=domain,
             user_email=user_email,
             active_allowed=True,
-            verified_at=datetime.utcnow(),
+            verified_at=datetime.now(timezone.utc),
             method="well-known",
         )
         session.add(consent)
@@ -166,10 +157,7 @@ async def get_consent_status(
     user_email: str = Depends(get_current_user_email),
     session: Session = Depends(get_session),
 ):
-    domain = domain.strip().lower()
-    
-    if domain.startswith(("http://", "https://")):
-        domain = extract_domain(domain)
+    domain = normalize_domain(domain)
     
     consent = session.exec(
         select(Consent)

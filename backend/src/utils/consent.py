@@ -1,5 +1,21 @@
 import httpx
+from datetime import datetime, timezone
 from urllib.parse import urlparse
+
+from src.utils.domain import handle_localhost, domain_to_urls
+from src.utils.http_client import HTTPClientFactory
+
+
+def generate_consent_file_content(domain: str, user_email: str) -> str:
+    return f"""vibesecure-active-consent=YES
+domain={domain}
+requested_by={user_email}
+consent_date={datetime.now(timezone.utc).strftime('%Y-%m-%d')}
+
+# This file authorizes VibeSecure to perform active security scanning
+# Active scanning generates potentially malicious payloads (SQL injection, XSS, etc.)
+# Only authorize if you have legal permission and understand the risks
+"""
 
 
 def consent_file_url(domain: str) -> str:
@@ -11,19 +27,16 @@ def consent_file_url(domain: str) -> str:
 
 
 def check_active_consent(domain: str, user_email: str) -> bool:
-    candidates = [domain]
-    if "localhost" in domain or "127.0.0.1" in domain:
-        candidates.append(domain.replace("localhost", "host.docker.internal").replace("127.0.0.1", "host.docker.internal"))
+    candidates = handle_localhost(domain)
     
     urls_to_try = []
     for d in candidates:
-        urls_to_try.append(f"https://{d}/.well-known/vibesecure-consent.txt")
-        urls_to_try.append(f"http://{d}/.well-known/vibesecure-consent.txt")
+        urls_to_try.extend(domain_to_urls(d))
+    
+    consent_urls = [f"{base_url}/.well-known/vibesecure-consent.txt" for base_url in urls_to_try]
 
-    client = httpx.Client(timeout=5.0, follow_redirects=True, headers={"User-Agent": "VibeSecure/1.0"}, verify=False)
-
-    try:
-        for url in urls_to_try:
+    with HTTPClientFactory.get_client(timeout=5.0, user_agent="VibeSecure/1.0") as client:
+        for url in consent_urls:
             try:
                 response = client.get(url)
 
@@ -48,18 +61,11 @@ def check_active_consent(domain: str, user_email: str) -> bool:
                 if requested_by and requested_by != user_email:
                     continue
 
-                # If we passed all checks, return True
-                client.close()
                 return True
                 
             except (httpx.ConnectError, httpx.TimeoutException):
                 continue
-                
-        client.close()
-        return False
-
-    except Exception:
-        client.close()
+        
         return False
 
 

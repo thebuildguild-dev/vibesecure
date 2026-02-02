@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any
 from enum import Enum
 from sqlmodel import SQLModel, Field, Relationship, Column
@@ -6,6 +6,10 @@ from sqlalchemy import JSON
 from pydantic import field_validator
 import json
 import uuid
+
+
+def now_utc() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def get_risk_label(score: Optional[int]) -> str:
@@ -48,7 +52,7 @@ class FindingBase(SQLModel):
 class Finding(FindingBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     scan_id: str = Field(foreign_key="scan.id", index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
     
     scan: Optional["Scan"] = Relationship(back_populates="findings_rel")
 
@@ -72,7 +76,7 @@ class Scan(ScanBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     status: ScanStatus = ScanStatus.queued
     user_email: Optional[str] = Field(default=None, index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
     celery_task_id: Optional[str] = None
@@ -186,9 +190,9 @@ def update_scan_status(session, scan_id: str, status: ScanStatus, started: bool 
     if scan:
         scan.status = status
         if started:
-            scan.started_at = datetime.utcnow()
+            scan.started_at = datetime.now(timezone.utc)
         if finished:
-            scan.finished_at = datetime.utcnow()
+            scan.finished_at = datetime.now(timezone.utc)
         session.add(scan)
         session.commit()
         session.refresh(scan)
@@ -237,7 +241,7 @@ class DomainVerification(SQLModel, table=True):
     domain: str = Field(index=True)
     user_email: str = Field(index=True)
     token_hash: str
-    token_created_at: datetime = Field(default_factory=datetime.utcnow)
+    token_created_at: datetime = Field(default_factory=now_utc)
     token_expires_at: datetime
     verified: bool = False
     verified_at: Optional[datetime] = None
@@ -250,7 +254,7 @@ class DomainVerificationAudit(SQLModel, table=True):
     verification_id: str = Field(foreign_key="domainverification.id", index=True)
     action: str
     details: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
 
 
 class Consent(SQLModel, table=True):
@@ -260,7 +264,7 @@ class Consent(SQLModel, table=True):
     active_allowed: bool = Field(default=False)
     verified_at: Optional[datetime] = None
     method: str = Field(default="well-known")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
 
 
 class ScanExport(SQLModel):

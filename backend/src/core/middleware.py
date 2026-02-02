@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -31,11 +31,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return "anonymous"
 
     def _get_rate_limit_key(self, client_ip: str, user_id: str) -> str:
-        today = datetime.utcnow().date().isoformat()
+        today = datetime.now(timezone.utc).date().isoformat()
         return f"ratelimit:{user_id}:{client_ip}:{today}"
 
     def _get_ttl_seconds(self) -> int:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         end_of_day = datetime.combine(now.date() + timedelta(days=1), datetime.min.time())
         return int((end_of_day - now).total_seconds())
 
@@ -68,7 +68,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             
             ttl = self.redis_client.ttl(rate_limit_key)
             if ttl > 0:
-                reset_timestamp = int((datetime.utcnow() + timedelta(seconds=ttl)).timestamp())
+                reset_timestamp = int((datetime.now(timezone.utc) + timedelta(seconds=ttl)).timestamp())
                 response.headers["X-RateLimit-Reset"] = str(reset_timestamp)
 
             return response
