@@ -163,8 +163,8 @@ export default function Profile() {
           className="mt-4 sm:mt-6"
         >
           <Card>
-            <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-              <Fingerprint className="w-5 h-5 text-[var(--accent-verified)] mt-1 flex-shrink-0" />
+            <div className="flex items-start gap-3 sm:gap-4">
+              <Fingerprint className="w-5 h-5 text-[var(--accent-verified)] mt-0.5 sm:mt-1 flex-shrink-0" />
               <div className="flex-1">
                 <h3 className="text-base sm:text-lg font-semibold text-[var(--text-primary)] mb-2 font-display">
                   Authentication Provider

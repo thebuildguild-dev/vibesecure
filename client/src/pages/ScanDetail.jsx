@@ -453,10 +453,9 @@ export default function ScanDetail() {
             <SectionTitle
               icon={<Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />}
               className="mb-3 sm:mb-4"
+              titleSize="text-base sm:text-lg"
             >
-              <span className="text-base sm:text-lg">
-                AI Vulnerability Analysis
-              </span>
+              AI Vulnerability Analysis
             </SectionTitle>
             {loadingAiSummary ? (
               <div className="flex flex-col items-center justify-center py-8 sm:py-12">
@@ -554,10 +553,9 @@ export default function ScanDetail() {
               <SectionTitle
                 icon={<FileCode className="w-4 h-4 sm:w-5 sm:h-5" />}
                 className="mb-0"
+                titleSize="text-base sm:text-lg"
               >
-                <span className="text-base sm:text-lg">
-                  Platform Configuration
-                </span>
+                Platform Configuration
               </SectionTitle>
               <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 {["vercel", "netlify", "nginx", "apache"].map((platform) => (
@@ -635,8 +633,11 @@ export default function ScanDetail() {
           transition={{ delay: 0.2 }}
           className="space-y-4 sm:space-y-6"
         >
-          <SectionTitle icon={<Radar className="w-5 h-5 sm:w-6 sm:h-6" />}>
-            <span className="text-xl sm:text-2xl">Security Findings</span>
+          <SectionTitle
+            icon={<Radar className="w-5 h-5 sm:w-6 sm:h-6" />}
+            titleSize="text-xl sm:text-2xl"
+          >
+            Security Findings
           </SectionTitle>
 
           {Object.entries(groupedFindings).map(

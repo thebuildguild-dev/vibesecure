@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Target,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import DomainVerificationInline from "./DomainVerificationInline";
 import ConsentInline from "./ConsentInline";
+import { scrollToTop } from "../utils/scroll";
 
 export default function ScanForm({ onScanCreated }) {
   const [url, setUrl] = useState("");
@@ -32,6 +33,12 @@ export default function ScanForm({ onScanCreated }) {
   const [showVerification, setShowVerification] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [pendingDomain, setPendingDomain] = useState(null);
+
+  useEffect(() => {
+    if (showVerification || showConsentModal) {
+      scrollToTop({ delay: 100 });
+    }
+  }, [showVerification, showConsentModal]);
 
   const extractDomain = (urlString) => {
     try {
@@ -106,6 +113,7 @@ export default function ScanForm({ onScanCreated }) {
       if (!hasConsent) {
         setPendingDomain(domain);
         setShowConsentModal(true);
+        scrollToTop({ delay: 100 });
       } else {
         setAllowActive(true);
       }
@@ -134,6 +142,7 @@ export default function ScanForm({ onScanCreated }) {
         setPendingDomain(domain);
         setShowVerification(true);
         setLoading(false);
+        scrollToTop({ delay: 100 });
         return;
       }
 
@@ -143,6 +152,7 @@ export default function ScanForm({ onScanCreated }) {
           setPendingDomain(domain);
           setShowConsentModal(true);
           setLoading(false);
+          scrollToTop({ delay: 100 });
           return;
         }
       }
@@ -213,15 +223,15 @@ export default function ScanForm({ onScanCreated }) {
         <DomainVerificationInline
           domain={pendingDomain}
           onVerified={() => {
+            scrollToTop({ delay: 100 });
             setShowVerification(false);
             setTimeout(() => {
               handleSubmit({ preventDefault: () => {} });
-              if (onScanCreated) {
-                onScanCreated(false);
-              }
-            }, 500);
+              if (onScanCreated) onScanCreated(false);
+            }, 0);
           }}
           onCancel={() => {
+            scrollToTop({ delay: 100 });
             setShowVerification(false);
             setPendingDomain(null);
             setLoading(false);
@@ -234,10 +244,12 @@ export default function ScanForm({ onScanCreated }) {
         <ConsentInline
           domain={pendingDomain}
           onConsentVerified={() => {
+            scrollToTop({ delay: 100 });
             setShowConsentModal(false);
             setAllowActive(true);
           }}
           onCancel={() => {
+            scrollToTop({ delay: 100 });
             setShowConsentModal(false);
             setPendingDomain(null);
             setAllowActive(false);
@@ -255,8 +267,8 @@ export default function ScanForm({ onScanCreated }) {
           className="terminal-panel-elevated"
         >
           <div className="mb-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Target className="w-6 h-6 text-[var(--accent-verified)]" />
+            <div className="flex items-start gap-3 mb-2">
+              <Target className="w-6 h-6 text-[var(--accent-verified)] mt-0.5" />
               <h2 className="text-2xl font-mono font-bold">
                 Initialize Security Scan
               </h2>
@@ -340,9 +352,9 @@ export default function ScanForm({ onScanCreated }) {
                       <div className="flex-1">
                         <label
                           htmlFor="allowActive"
-                          className="font-mono font-semibold text-[var(--accent-warning)] cursor-pointer flex items-center gap-2 mb-1"
+                          className="font-mono font-semibold text-[var(--accent-warning)] cursor-pointer flex items-start gap-2 mb-1"
                         >
-                          <Radar className="w-4 h-4" />
+                          <Radar className="w-4 h-4 mt-1" />
                           Enable Active Scanning (OWASP ZAP)
                         </label>
                         <p className="text-xs text-[var(--text-tertiary)]">

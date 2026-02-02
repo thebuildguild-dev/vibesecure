@@ -7,9 +7,9 @@ export default function SectionTitle({
 }) {
   return (
     <div className={`mb-4 sm:mb-6 ${className}`}>
-      <div className="flex items-center gap-2 sm:gap-3 leading-none">
+      <div className="flex items-start gap-2 sm:gap-3 leading-none">
         {icon && (
-          <span className="text-[var(--accent-verified)] flex-shrink-0 flex items-center justify-center">
+          <span className="text-[var(--accent-verified)] flex-shrink-0 flex items-center justify-center mt-0.5 sm:mt-1">
             {icon}
           </span>
         )}

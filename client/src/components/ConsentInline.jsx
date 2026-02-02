@@ -9,6 +9,7 @@ import {
   AlertCircle,
   X,
 } from "lucide-react";
+import { scrollToTop } from "../utils/scroll";
 
 export default function ConsentInline({ domain, onConsentVerified, onCancel }) {
   const [consentData, setConsentData] = useState(null);
@@ -41,6 +42,7 @@ export default function ConsentInline({ domain, onConsentVerified, onCancel }) {
 
       if (result.active_consent_verified) {
         setConsentSuccess(true);
+        scrollToTop();
         setTimeout(() => {
           onConsentVerified && onConsentVerified();
         }, 1500);
@@ -49,6 +51,7 @@ export default function ConsentInline({ domain, onConsentVerified, onCancel }) {
           result.message ||
             "Consent file not found or invalid. Please check file placement.",
         );
+        scrollToTop();
       }
     } catch (err) {
       setError(err.message);
@@ -107,7 +110,10 @@ export default function ConsentInline({ domain, onConsentVerified, onCancel }) {
           </p>
         </div>
         <button
-          onClick={onCancel}
+          onClick={() => {
+            scrollToTop();
+            onCancel();
+          }}
           className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
         >
           <X className="w-5 h-5" />
@@ -225,7 +231,13 @@ export default function ConsentInline({ domain, onConsentVerified, onCancel }) {
                 </>
               )}
             </button>
-            <button onClick={onCancel} className="btn-secondary">
+            <button
+              onClick={() => {
+                scrollToTop();
+                onCancel();
+              }}
+              className="btn-secondary"
+            >
               Cancel
             </button>
           </div>

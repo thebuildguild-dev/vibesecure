@@ -153,7 +153,10 @@ export const scans = {
       responseType: format === "pdf" ? "blob" : "json",
     }),
 
-  getAISummary: (scanId) => fetchWithAuth(`/scans/${scanId}/ai-summary`),
+  getAISummary: (scanId) =>
+    fetchWithAuth(`/scans/${scanId}/ai-summary`, {
+      timeout: 60000,
+    }),
 
   getFixConfig: (scanId, platform) =>
     fetchWithAuth(`/scans/${scanId}/fix-config?platform=${platform}`),

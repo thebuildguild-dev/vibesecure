@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Radar, Lock, Zap, Eye, AlertTriangle } from "lucide-react";
+import { Radar,GlobeLock, Lock, Zap, Eye, AlertTriangle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Card, Badge } from "../components/ui";
 import Footer from "../components/layout/Footer";
@@ -22,7 +22,7 @@ export default function Landing() {
 
   const features = [
     {
-      icon: Radar,
+      icon: GlobeLock,
       title: "Domain Verification Required",
       description: "Prove ownership before scanning with DNS/file verification",
       color: "var(--accent-verified)",

@@ -11,6 +11,7 @@ import {
   CheckCircle,
   Info,
 } from "lucide-react";
+import { scrollToTop } from "../utils/scroll";
 
 export default function DomainVerificationInline({
   domain,
@@ -44,6 +45,7 @@ export default function DomainVerificationInline({
     }
   };
 
+
   const verifyToken = async () => {
     setVerifying(true);
     setError(null);
@@ -54,6 +56,7 @@ export default function DomainVerificationInline({
 
       if (result.verified) {
         setVerificationSuccess(true);
+        scrollToTop();
         setTimeout(() => {
           onVerified && onVerified();
         }, 1500);
@@ -63,6 +66,7 @@ export default function DomainVerificationInline({
             "Verification failed. Please check token placement.",
         );
         setShowDeleteOption(true);
+        scrollToTop();
       }
     } catch (err) {
       setError(err.message);
@@ -199,7 +203,10 @@ export default function DomainVerificationInline({
 
           {onCancel && (
             <button
-              onClick={onCancel}
+              onClick={() => {
+                scrollToTop();
+                onCancel();
+              }}
               disabled={deleting}
               className="px-6 py-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] rounded-lg font-mono transition-colors"
             >
@@ -427,7 +434,10 @@ export default function DomainVerificationInline({
 
             {onCancel && (
               <button
-                onClick={onCancel}
+                onClick={() => {
+                  scrollToTop();
+                  onCancel();
+                }}
                 disabled={verifying || deleting}
                 className="px-6 py-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] rounded-lg font-mono transition-colors"
               >
