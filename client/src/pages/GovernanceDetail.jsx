@@ -275,9 +275,9 @@ function DeepfakeResults({ agentResults }) {
   const verdictLabel = verdict
     ? verdict.replace(/_/g, " ").toUpperCase()
     : "ANALYZING";
-  const confidence = voter?.confidence_score
-    ? Math.round(voter.confidence_score * 100)
-    : null;
+  // confidence_score is already 0-100, no multiplication needed
+  const confidence =
+    voter?.confidence_score != null ? voter.confidence_score : null;
 
   return (
     <div className="space-y-4">
@@ -1202,7 +1202,12 @@ export default function GovernanceDetail() {
             <h1 className="font-mono text-lg font-bold">{svcConfig.label}</h1>
             <div className="text-xs text-[var(--text-tertiary)] font-mono">
               {jobId.slice(0, 8)}
-              {"\u2026"} &bull; {new Date(job.created_at).toLocaleString()}
+              {"\u2026"} &bull;{" "}
+              {new Date(
+                job.created_at.endsWith("Z") || job.created_at.includes("+")
+                  ? job.created_at
+                  : job.created_at + "Z",
+              ).toLocaleString()}
             </div>
           </div>
           <Badge

@@ -62,7 +62,8 @@ Return JSON:
             try:
                 batch_result = self.generate_json(
                     prompt,
-                    system_instruction="You are a forensic image analyst specializing in deepfake detection. Be thorough and precise.",
+                    system_instruction="You are a forensic image analyst specializing in deepfake detection. You are viewing the actual image frames. Be thorough and precise.",
+                    image_paths=existing_frames,
                 )
                 frame_analyses.extend(batch_result.get("frame_analyses", []))
             except Exception as e:

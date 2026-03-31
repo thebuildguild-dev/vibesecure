@@ -183,7 +183,10 @@ Return JSON:
             real_pct = min(99, 50 + final_confidence // 2)
         elif final_verdict == "likely_fake":
             real_pct = max(1, 50 - final_confidence // 2)
-        else:
+        elif final_verdict == "suspicious":
+            # Lean toward fake — suspicious means something looks off
+            real_pct = max(10, 50 - final_confidence // 3)
+        else:  # inconclusive
             real_pct = 50
 
         return {

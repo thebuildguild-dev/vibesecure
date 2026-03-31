@@ -42,17 +42,21 @@ class DeepfakeTriageAgent(BaseAgent):
             if os.path.exists(frame_path):
                 frame_descriptions.append(f"Frame {i + 1}: {frame_path}")
 
+        # Collect existing image files to pass as multimodal input
+        image_files = [f for f in sample_frames if os.path.exists(f)]
+
         prompt = f"""You are a deepfake detection specialist performing a QUICK TRIAGE assessment.
 
-Analyze the following information about uploaded media:
+You are being shown the actual media file(s) to analyze directly.
 - File type: {file_type}
 - Total frames extracted: {len(frames)}
-- Sample frames analyzed: {len(sample_frames)}
+- Frames attached for analysis: {len(image_files)}
 
-Based on a first-pass analysis, assess:
+Carefully inspect the image(s) attached and assess:
 1. Are there obvious signs of AI generation or manipulation?
-2. Look for: unnatural skin textures, inconsistent lighting, warped backgrounds, asymmetric facial features, blurred edges around face/hair.
+2. Look for: unnatural skin textures, inconsistent lighting, warped backgrounds, asymmetric facial features, blurred edges around face/hair, uncanny valley effect.
 3. Any temporal inconsistencies across frames (if video)?
+4. Does skin look painted or plasticky? Are eyes/teeth unnatural?
 
 Return JSON:
 {{
@@ -61,13 +65,14 @@ Return JSON:
     "quick_observations": ["observation 1", "observation 2"],
     "needs_forensic": true/false,
     "risk_indicators": ["indicator 1"],
-    "triage_reasoning": "Brief explanation"
+    "triage_reasoning": "Brief explanation of what you visually observed"
 }}"""
 
         try:
             result = self.generate_json(
                 prompt,
-                system_instruction="You are a deepfake detection triage specialist. Be conservative - flag anything uncertain for deeper forensic analysis.",
+                system_instruction="You are a deepfake detection triage specialist. You are viewing the actual image. Be conservative - flag anything uncertain for deeper forensic analysis.",
+                image_paths=image_files if image_files else None,
             )
 
             result["status"] = "success"

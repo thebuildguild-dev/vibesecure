@@ -28,22 +28,25 @@ class BaseAgent:
         prompt: str,
         system_instruction: str | None = None,
         response_mime_type: str | None = None,
+        image_paths: list[str] | None = None,
     ) -> str:
         """Generate text using the appropriate model tier."""
         if self.is_brain:
-            return brain_generate(prompt, system_instruction, response_mime_type)
-        return agent_generate(prompt, system_instruction, response_mime_type)
+            return brain_generate(prompt, system_instruction, response_mime_type, image_paths)
+        return agent_generate(prompt, system_instruction, response_mime_type, image_paths)
 
     def generate_json(
         self,
         prompt: str,
         system_instruction: str | None = None,
+        image_paths: list[str] | None = None,
     ) -> dict:
         """Generate and parse a JSON response."""
         text = self.generate(
             prompt,
             system_instruction=system_instruction,
             response_mime_type="application/json",
+            image_paths=image_paths,
         )
         return parse_json_response(text)
 

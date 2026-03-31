@@ -76,14 +76,57 @@ def process_governance_job(self, job_id: str):
     )
 
     try:
-        # Run the swarm
-        from src.agents.graph import run_swarm
+        from src.agents.graph import swarm_app
+        from src.agents.messaging import publish_event
 
-        final_state = run_swarm(
-            job_id=job_id,
-            service_type=service_type,
-            input_data=input_data,
-            user_email=user_email,
+        initial_state = {
+            "job_id": job_id,
+            "service_type": service_type,
+            "input_data": input_data,
+            "user_email": user_email,
+            "active_agents": [],
+            "completed_agents": [],
+            "current_agent": "",
+            "results": {},
+            "messages": [],
+            "governance_bundle": {},
+            "status": "pending",
+            "error": None,
+        }
+
+        publish_event(job_id, "system", "swarm_started", {"service_type": service_type})
+
+        final_state = initial_state
+        for step in swarm_app.stream(initial_state):
+            for node_name, node_state in step.items():
+                final_state = node_state
+                # Write agents_planned to DB immediately after supervisor decides
+                if node_name == "supervisor_plan":
+                    planned = node_state.get("active_agents", [])
+                    _update_job(job_id, agents_planned=planned)
+                    logger.info(
+                        f"[Job {job_id}] Supervisor planned {len(planned)} agents: {planned}"
+                    )
+                # Write agents_completed progressively after each service group
+                elif node_name in (
+                    "run_deepfake",
+                    "run_threat_intel",
+                    "run_responsible_ai",
+                    "run_privacy",
+                    "run_digital_asset",
+                ):
+                    completed = node_state.get("completed_agents", [])
+                    _update_job(job_id, agents_completed=completed)
+                    logger.info(f"[Job {job_id}] After {node_name}: {len(completed)} agents done")
+
+        publish_event(
+            job_id,
+            "system",
+            "swarm_completed",
+            {
+                "status": final_state.get("status", "unknown"),
+                "agents_completed": len(final_state.get("completed_agents", [])),
+            },
         )
 
         # Extract results

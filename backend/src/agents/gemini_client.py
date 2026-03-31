@@ -16,14 +16,13 @@ from src.core.config import settings
 logger = logging.getLogger(__name__)
 
 BRAIN_MODELS = [
-    "gemini-3.1-pro-preview",
     "gemini-2.5-pro",
     "gemini-2.5-flash",
 ]
 
 AGENT_MODELS = [
-    "gemini-3-flash-preview",
     "gemini-2.5-flash",
+    "gemini-2.0-flash",
 ]
 
 
@@ -38,15 +37,42 @@ def generate_with_fallback(
     models: list[str],
     system_instruction: str | None = None,
     response_mime_type: str | None = None,
+    image_paths: list[str] | None = None,
     max_retries_per_model: int = 2,
     retry_delay: float = 1.0,
 ) -> str:
     """
     Call Gemini with automatic model fallback.
     Tries each model in order, retrying on transient errors before falling back.
+    Pass image_paths to enable multimodal analysis (images are sent as inline data).
     """
+    import os
+
+    from google.genai import types
+
     client = _get_client()
     last_error = None
+
+    # Build contents — multimodal if image paths are provided
+    if image_paths:
+        parts = []
+        _ext_to_mime = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp",
+            ".gif": "image/gif",
+        }
+        for img_path in image_paths:
+            if os.path.exists(img_path):
+                with open(img_path, "rb") as _f:
+                    img_bytes = _f.read()
+                mime = _ext_to_mime.get(os.path.splitext(img_path)[1].lower(), "image/jpeg")
+                parts.append(types.Part.from_bytes(data=img_bytes, mime_type=mime))
+        parts.append(types.Part.from_text(prompt))
+        contents = parts
+    else:
+        contents = prompt
 
     for model_name in models:
         for attempt in range(max_retries_per_model):
@@ -59,7 +85,7 @@ def generate_with_fallback(
 
                 response = client.models.generate_content(
                     model=model_name,
-                    contents=prompt,
+                    contents=contents,
                     config=config if config else None,
                 )
 
@@ -106,6 +132,7 @@ def brain_generate(
     prompt: str,
     system_instruction: str | None = None,
     response_mime_type: str | None = None,
+    image_paths: list[str] | None = None,
 ) -> str:
     """Generate using brain-tier models (Supervisor Agent)."""
     return generate_with_fallback(
@@ -113,6 +140,7 @@ def brain_generate(
         models=BRAIN_MODELS,
         system_instruction=system_instruction,
         response_mime_type=response_mime_type,
+        image_paths=image_paths,
     )
 
 
@@ -120,6 +148,7 @@ def agent_generate(
     prompt: str,
     system_instruction: str | None = None,
     response_mime_type: str | None = None,
+    image_paths: list[str] | None = None,
 ) -> str:
     """Generate using agent-tier models (all other agents)."""
     return generate_with_fallback(
@@ -127,6 +156,7 @@ def agent_generate(
         models=AGENT_MODELS,
         system_instruction=system_instruction,
         response_mime_type=response_mime_type,
+        image_paths=image_paths,
     )
 
 
