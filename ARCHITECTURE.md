@@ -40,8 +40,8 @@ Every AI Governance analysis is orchestrated by a **LangGraph stateful graph** w
 | ------------------- | --------------------------------------------------------------------------- |
 | Backend framework   | FastAPI (Python 3.11)                                                       |
 | Agent orchestration | LangGraph (StateGraph)                                                      |
-| AI model            | Google Gemini 2.0 Flash (worker agents) + Gemini 1.5 Pro (Supervisor brain) |
-| Embeddings          | `gemini-embedding-001`, 768 dimensions                                      |
+| AI model            | Google Gemini
+| Embeddings          | `gemini-embedding-001`                               |
 | Vector store        | PostgreSQL 15 + pgvector extension                                          |
 | RAG table           | `rag_documents` (cosine similarity via IVFFlat index)                       |
 | Task queue          | Celery + Redis                                                              |

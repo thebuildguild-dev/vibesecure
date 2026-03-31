@@ -63,6 +63,8 @@ services:
       - "host.docker.internal:host-gateway"
     env_file:
       - .env
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -101,6 +103,7 @@ services:
     volumes:
       - ./backend:/app
       - ./backend/secrets:/app/secrets:ro
+      - uploads_data:/app/uploads
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file:
@@ -117,9 +120,26 @@ services:
       zap:
         condition: service_healthy
 
+  demo_upsert:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.backend
+    command: ["python", "scripts/demo_upsert.py"]
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - vibesecure-network
+
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:
 
 networks:
   vibesecure-network:

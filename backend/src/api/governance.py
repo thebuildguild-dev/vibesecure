@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/governance", tags=["governance"])
 
-UPLOAD_DIR = "uploads/governance"
+# Use an absolute path so the stored file_path is valid regardless of CWD
+# (critical for Celery worker containers that may have a different CWD)
+UPLOAD_DIR = os.path.abspath("uploads/governance")
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
@@ -128,11 +130,11 @@ async def create_governance_job_with_upload(
     else:
         file_type = "video"
 
-    # Save file
+    # Save file — file_path is always absolute so the worker container can resolve it
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     file_ext = os.path.splitext(file.filename or "upload")[1] or ".bin"
     file_id = str(uuid.uuid4())
-    file_path = os.path.join(UPLOAD_DIR, f"{file_id}{file_ext}")
+    file_path = os.path.abspath(os.path.join(UPLOAD_DIR, f"{file_id}{file_ext}"))
 
     total_size = 0
     with open(file_path, "wb") as f:
