@@ -431,29 +431,52 @@ export default function Dashboard() {
                         <div className="space-y-3">
                           <div>
                             <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5">
-                              AI System Description{" "}
+                              AI Model Chat Endpoint{" "}
                               <span className="text-[var(--accent-error)]">
                                 *
                               </span>
                             </label>
-                            <textarea
-                              value={formAiDesc}
-                              onChange={(e) => setFormAiDesc(e.target.value)}
-                              placeholder="Describe the AI system to audit: its purpose, training data, decision-making scope, affected user groups, and deployment context..."
-                              className="input-field text-sm min-h-[110px] resize-y"
+                            <input
+                              type="url"
+                              value={formUrl}
+                              onChange={(e) => setFormUrl(e.target.value)}
+                              placeholder="http://localhost:3001/chat"
+                              className="input-field text-sm"
                               required
                             />
                           </div>
-                          <div>
-                            <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1.5">
-                              Additional Content (optional)
-                            </label>
-                            <textarea
-                              value={formContent}
-                              onChange={(e) => setFormContent(e.target.value)}
-                              placeholder="Paste model cards, bias test results, AI outputs, or evaluation reports..."
-                              className="input-field text-sm min-h-[80px] resize-y"
-                            />
+                          <div className="p-3 rounded-lg bg-[var(--accent-warning)]/8 border border-[var(--accent-warning)]/25 text-xs font-mono text-[var(--text-secondary)] leading-relaxed space-y-1">
+                            <p className="text-[var(--accent-warning)] font-semibold mb-1">
+                              What our agents will do:
+                            </p>
+                            <p>
+                              Send probe prompts to the endpoint to test for
+                              training data leakage, prompt injection,
+                              demographic bias, PII exposure, and missing safety
+                              controls.
+                            </p>
+                            <p className="mt-1 text-[var(--text-tertiary)]">
+                              The endpoint must accept POST with JSON body{" "}
+                              <code className="text-[var(--accent-info)]">
+                                {'{ message: "..." }'}
+                              </code>{" "}
+                              and return{" "}
+                              <code className="text-[var(--accent-info)]">
+                                {'{ response: "..." }'}
+                              </code>
+                              .
+                            </p>
+                            <p className="mt-1 text-[var(--text-tertiary)]">
+                              If running inside Docker, use{" "}
+                              <code className="text-[var(--accent-info)]">
+                                host.docker.internal
+                              </code>{" "}
+                              in place of{" "}
+                              <code className="text-[var(--accent-info)]">
+                                localhost
+                              </code>
+                              .
+                            </p>
                           </div>
                         </div>
                       )}

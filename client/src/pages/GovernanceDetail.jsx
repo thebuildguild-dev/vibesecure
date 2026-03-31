@@ -275,9 +275,11 @@ function DeepfakeResults({ agentResults }) {
   const verdictLabel = verdict
     ? verdict.replace(/_/g, " ").toUpperCase()
     : "ANALYZING";
-  // confidence_score is already 0-100, no multiplication needed
+  // confidence_score is already 0-100; clamp just in case
   const confidence =
-    voter?.confidence_score != null ? voter.confidence_score : null;
+    voter?.confidence_score != null
+      ? Math.min(100, voter.confidence_score)
+      : null;
 
   return (
     <div className="space-y-4">
