@@ -22,8 +22,13 @@ class PrivacyScannerAgent(BaseAgent):
     def _fetch_page_content(self, url: str) -> tuple[str, str]:
         """Fetch page HTML and extract text content."""
         try:
+            # Remap localhost to host.docker.internal so the worker container
+            # can reach dev servers running on the host machine
+            fetch_url = url.replace("localhost", "host.docker.internal").replace(
+                "127.0.0.1", "host.docker.internal"
+            )
             with httpx.Client(timeout=30, follow_redirects=True) as client:
-                response = client.get(url)
+                response = client.get(fetch_url)
                 html = response.text
                 soup = BeautifulSoup(html, "html.parser")
                 text = soup.get_text(separator="\n", strip=True)
