@@ -56,7 +56,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile.backend
-    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "${FASTAPI_PORT}:8000"
     extra_hosts:
@@ -97,7 +97,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile.backend
-    command: celery -A src.worker.celery_app worker --loglevel=info --concurrency=${CELERY_WORKER_CONCURRENCY}
+    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=${CELERY_WORKER_CONCURRENCY}
     volumes:
       - ./backend:/app
       - ./backend/secrets:/app/secrets:ro
