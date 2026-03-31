@@ -26,7 +26,7 @@ class AgentState(TypedDict, total=False):
 
     # Agent orchestration
     active_agents: list[str]
-    completed_agents: list[str]
+    completed_agents: Annotated[list[str], add]
     current_agent: str
 
     # Accumulated results from each agent (keyed by agent name)

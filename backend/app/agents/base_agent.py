@@ -1,5 +1,8 @@
 """
 Base agent class for all swarm agents.
+
+Returns partial state deltas so LangGraph reducers (merge_dicts for results,
+operator.add for messages and completed_agents) handle merging correctly.
 """
 
 import logging
@@ -54,10 +57,13 @@ class BaseAgent:
         """
         raise NotImplementedError(f"{self.name} must implement process()")
 
-    def run(self, state: AgentState) -> AgentState:
+    def run(self, state: AgentState) -> dict:
         """
         Execute the agent with event publishing and error handling.
-        Returns updated state.
+
+        Returns a **partial state delta** -- only the keys that changed.
+        LangGraph applies the Annotated reducers (merge_dicts for results,
+        operator.add for completed_agents and messages) automatically.
         """
         job_id = state.get("job_id", "unknown")
         self.logger.info(f"[{job_id}] Agent {self.name} starting")
@@ -80,24 +86,17 @@ class BaseAgent:
                 },
             )
 
-            # Build updated state
-            new_messages = [
-                {
-                    "agent": self.name,
-                    "event": "completed",
-                    "duration": round(elapsed, 2),
-                    "timestamp": time.time(),
-                }
-            ]
-
-            completed = list(state.get("completed_agents", []))
-            completed.append(self.name)
-
             return {
-                **state,
-                "results": {**state.get("results", {}), self.name: result},
-                "messages": state.get("messages", []) + new_messages,
-                "completed_agents": completed,
+                "results": {self.name: result},
+                "messages": [
+                    {
+                        "agent": self.name,
+                        "event": "completed",
+                        "duration": round(elapsed, 2),
+                        "timestamp": time.time(),
+                    }
+                ],
+                "completed_agents": [self.name],
                 "current_agent": self.name,
             }
 
@@ -108,23 +107,17 @@ class BaseAgent:
 
             publish_agent_error(job_id, self.name, str(e))
 
-            new_messages = [
-                {
-                    "agent": self.name,
-                    "event": "error",
-                    "error": str(e),
-                    "duration": round(elapsed, 2),
-                    "timestamp": time.time(),
-                }
-            ]
-
-            completed = list(state.get("completed_agents", []))
-            completed.append(self.name)
-
             return {
-                **state,
-                "results": {**state.get("results", {}), self.name: {"error": str(e)}},
-                "messages": state.get("messages", []) + new_messages,
-                "completed_agents": completed,
+                "results": {self.name: {"error": str(e)}},
+                "messages": [
+                    {
+                        "agent": self.name,
+                        "event": "error",
+                        "error": str(e),
+                        "duration": round(elapsed, 2),
+                        "timestamp": time.time(),
+                    }
+                ],
+                "completed_agents": [self.name],
                 "current_agent": self.name,
             }
