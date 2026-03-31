@@ -16,8 +16,10 @@ async function fetchWithAuth(endpoint, options = {}) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
 
+  // Don't set Content-Type for FormData — browser sets it with the correct multipart boundary
+  const isFormData = fetchOptions.body instanceof FormData;
   const headers = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...fetchOptions.headers,
   };
 

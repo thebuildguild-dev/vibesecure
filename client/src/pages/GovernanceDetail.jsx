@@ -98,21 +98,122 @@ function ScoreBar({ score, max = 100 }) {
   );
 }
 
+// ── Smart result renderer (no raw JSON) ──────────────────────────────────────
+
+const SKIP_KEYS = new Set(["status", "error"]);
+
+function renderValue(value, depth = 0) {
+  if (value === null || value === undefined)
+    return <span className="text-[var(--text-tertiary)]">—</span>;
+  if (typeof value === "boolean")
+    return (
+      <span
+        className={
+          value ? "text-[var(--accent-verified)]" : "text-[var(--accent-error)]"
+        }
+      >
+        {value ? "Yes" : "No"}
+      </span>
+    );
+  if (typeof value === "number")
+    return <span className="text-[var(--accent-info)] font-mono">{value}</span>;
+  if (typeof value === "string")
+    return <span className="text-[var(--text-secondary)]">{value}</span>;
+
+  if (Array.isArray(value)) {
+    if (value.length === 0)
+      return <span className="text-[var(--text-tertiary)]">None</span>;
+    return (
+      <ul className="space-y-1 mt-1">
+        {value.slice(0, 10).map((item, i) => (
+          <li key={i} className="flex items-start gap-2">
+            <span className="text-[var(--accent-info)] font-mono text-xs mt-0.5 flex-shrink-0">
+              ›
+            </span>
+            <span className="text-sm text-[var(--text-secondary)]">
+              {typeof item === "string" || typeof item === "number"
+                ? item
+                : renderValue(item, depth + 1)}
+            </span>
+          </li>
+        ))}
+        {value.length > 10 && (
+          <li className="text-xs text-[var(--text-tertiary)] font-mono">
+            ... and {value.length - 10} more
+          </li>
+        )}
+      </ul>
+    );
+  }
+
+  if (typeof value === "object") {
+    if (depth > 2)
+      return (
+        <span className="text-[var(--text-tertiary)] text-xs font-mono">
+          [nested object]
+        </span>
+      );
+    const entries = Object.entries(value).filter(([k]) => !SKIP_KEYS.has(k));
+    if (entries.length === 0)
+      return <span className="text-[var(--text-tertiary)]">—</span>;
+    return (
+      <div
+        className={`space-y-1.5 ${depth > 0 ? "pl-3 border-l border-slate-700/50 mt-1" : ""}`}
+      >
+        {entries.map(([k, v]) => (
+          <div key={k}>
+            <span className="text-xs font-mono text-[var(--text-tertiary)] uppercase tracking-wide">
+              {k.replace(/_/g, " ")}
+            </span>
+            <div className="mt-0.5">{renderValue(v, depth + 1)}</div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+}
+
 function AgentAccordion({ agentName, result }) {
   const [open, setOpen] = useState(false);
+
+  // Determine a quick status badge
+  const statusColor =
+    result?.status === "success"
+      ? "text-[var(--accent-verified)]"
+      : result?.status === "error" || result?.error
+        ? "text-[var(--accent-error)]"
+        : "text-[var(--text-tertiary)]";
+
+  const entries = result
+    ? Object.entries(result).filter(([k]) => !SKIP_KEYS.has(k))
+    : [];
+
   return (
     <div className="border border-slate-700 rounded-lg overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-elevated)] transition-colors text-left"
       >
-        <span className="font-mono text-sm font-semibold">
-          {AGENT_LABELS[agentName] || agentName}
-        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-mono text-sm font-semibold truncate">
+            {AGENT_LABELS[agentName] || agentName}
+          </span>
+          {result?.status && (
+            <span className={`text-xs font-mono flex-shrink-0 ${statusColor}`}>
+              {result.status}
+            </span>
+          )}
+          {result?.error && (
+            <span className="text-xs text-[var(--accent-error)] font-mono flex-shrink-0 truncate max-w-48">
+              {result.error}
+            </span>
+          )}
+        </div>
         {open ? (
-          <ChevronUp className="w-4 h-4 text-[var(--text-tertiary)]" />
+          <ChevronUp className="w-4 h-4 text-[var(--text-tertiary)] flex-shrink-0 ml-2" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-[var(--text-tertiary)]" />
+          <ChevronDown className="w-4 h-4 text-[var(--text-tertiary)] flex-shrink-0 ml-2" />
         )}
       </button>
       <AnimatePresence>
@@ -123,10 +224,25 @@ function AgentAccordion({ agentName, result }) {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-3 border-t border-slate-700">
-              <pre className="text-xs text-[var(--accent-verified)] bg-black/50 p-3 rounded overflow-auto max-h-72 scrollbar-thin whitespace-pre-wrap">
-                {JSON.stringify(result, null, 2)}
-              </pre>
+            <div className="p-4 border-t border-slate-700 space-y-3">
+              {result?.error && (
+                <div className="p-2 rounded bg-[var(--accent-error)]/10 border border-[var(--accent-error)]/20 text-sm text-[var(--accent-error)] font-mono">
+                  {result.error}
+                </div>
+              )}
+              {entries.length === 0 && !result?.error && (
+                <p className="text-sm text-[var(--text-tertiary)] font-mono">
+                  No data available.
+                </p>
+              )}
+              {entries.map(([k, v]) => (
+                <div key={k} className="space-y-0.5">
+                  <div className="text-xs font-mono font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+                    {k.replace(/_/g, " ")}
+                  </div>
+                  <div className="text-sm">{renderValue(v, 0)}</div>
+                </div>
+              ))}
             </div>
           </motion.div>
         )}
@@ -535,25 +651,102 @@ function PrivacyResults({ agentResults }) {
         </div>
       )}
 
-      {/* GDPR Violations */}
-      {mapper?.gdpr_mapping?.violations?.length > 0 && (
+      {/* Violations per regulation */}
+      {["gdpr_mapping", "ccpa_mapping", "dpdp_mapping"].map((regKey) => {
+        const reg = mapper?.[regKey];
+        if (!reg?.violations?.length) return null;
+        const labels = {
+          gdpr_mapping: "GDPR",
+          ccpa_mapping: "CCPA",
+          dpdp_mapping: "DPDP Act",
+        };
+        return (
+          <div key={regKey}>
+            <h4 className="text-xs font-mono text-[var(--text-tertiary)] uppercase mb-2 tracking-wider">
+              {labels[regKey]} Violations
+            </h4>
+            <div className="space-y-2">
+              {reg.violations.slice(0, 5).map((v, i) => (
+                <div
+                  key={i}
+                  className="p-3 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--accent-error)]/20 space-y-1"
+                >
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-mono font-bold text-[var(--accent-error)]">
+                      {typeof v === "string" ? v : v.article || v.section}
+                    </span>
+                    {v.title && (
+                      <span className="text-xs font-mono text-[var(--text-secondary)]">
+                        — {v.title}
+                      </span>
+                    )}
+                    {v.priority && (
+                      <span className="ml-auto text-xs font-mono uppercase px-1.5 py-0.5 rounded bg-[var(--accent-error)]/10 text-[var(--accent-error)]">
+                        {v.priority}
+                      </span>
+                    )}
+                  </div>
+                  {v.finding && (
+                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                      {v.finding}
+                    </p>
+                  )}
+                  {v.required_action && (
+                    <p className="text-xs text-[var(--accent-warning)] leading-relaxed">
+                      Action: {v.required_action}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* EU AI Act obligations */}
+      {mapper?.eu_ai_act_mapping?.obligations?.length > 0 && (
         <div>
           <h4 className="text-xs font-mono text-[var(--text-tertiary)] uppercase mb-2 tracking-wider">
-            GDPR Violations
+            EU AI Act Obligations
           </h4>
-          <div className="space-y-1">
-            {mapper.gdpr_mapping.violations.slice(0, 5).map((v, i) => (
+          <div className="space-y-2">
+            {mapper.eu_ai_act_mapping.obligations.slice(0, 4).map((o, i) => (
               <div
                 key={i}
-                className="text-sm text-[var(--accent-error)] flex items-start gap-2 p-2 rounded bg-[var(--bg-tertiary)]"
+                className="p-3 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--accent-warning)]/20 space-y-1"
               >
-                <span className="flex-shrink-0">›</span>
-                {typeof v === "string"
-                  ? v
-                  : v.article || v.description || JSON.stringify(v)}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-[var(--text-primary)]">
+                    {o.obligation}
+                  </span>
+                  {o.status && (
+                    <span
+                      className={`ml-auto text-xs font-mono uppercase px-1.5 py-0.5 rounded ${o.status === "met" ? "bg-[var(--accent-verified)]/10 text-[var(--accent-verified)]" : "bg-[var(--accent-warning)]/10 text-[var(--accent-warning)]"}`}
+                    >
+                      {o.status}
+                    </span>
+                  )}
+                </div>
+                {o.required_action && (
+                  <p className="text-xs text-[var(--accent-warning)] leading-relaxed">
+                    Action: {o.required_action}
+                  </p>
+                )}
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Executive Summary */}
+      {mapper?.executive_summary && (
+        <div className="p-3 rounded-lg bg-[var(--bg-tertiary)] border border-slate-700">
+          <h4 className="text-xs font-mono text-[var(--text-tertiary)] uppercase mb-2 tracking-wider">
+            Executive Summary
+          </h4>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            {mapper.executive_summary}
+          </p>
         </div>
       )}
 
@@ -562,7 +755,9 @@ function PrivacyResults({ agentResults }) {
         const recs = [
           ...(mapper?.gdpr_mapping?.recommendations || []),
           ...(mapper?.ccpa_mapping?.recommendations || []),
-        ].slice(0, 4);
+          ...(mapper?.dpdp_mapping?.recommendations || []),
+          ...(mapper?.eu_ai_act_mapping?.recommendations || []),
+        ].slice(0, 6);
         if (!recs.length) return null;
         return (
           <div>
@@ -578,9 +773,7 @@ function PrivacyResults({ agentResults }) {
                   <span className="text-[var(--accent-info)] font-mono text-xs mt-0.5 flex-shrink-0">
                     {i + 1}.
                   </span>
-                  {typeof r === "string"
-                    ? r
-                    : r.description || JSON.stringify(r)}
+                  {typeof r === "string" ? r : r.description || String(r)}
                 </div>
               ))}
             </div>
