@@ -3,7 +3,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api import auth_router, consent_router, domains_router, governance_router, scans_router
+from src.api import (
+    auth_router,
+    consent_router,
+    domains_router,
+    governance_router,
+    rag_router,
+    scans_router,
+)
 from src.core.config import settings
 from src.core.database import init_db
 from src.core.middleware import RateLimitMiddleware
@@ -39,6 +46,7 @@ app.include_router(scans_router, prefix="/api")
 app.include_router(domains_router, prefix="/api")
 app.include_router(consent_router, prefix="/api")
 app.include_router(governance_router, prefix="/api")
+app.include_router(rag_router, prefix="/api")
 
 
 @app.get("/health")
