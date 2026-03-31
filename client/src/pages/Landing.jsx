@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Radar,GlobeLock, Lock, Zap, Eye, AlertTriangle } from "lucide-react";
+import {
+  Radar,
+  Lock,
+  Zap,
+  AlertTriangle,
+  Shield,
+  Brain,
+  Database,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Card, Badge } from "../components/ui";
 import Footer from "../components/layout/Footer";
@@ -20,32 +28,48 @@ export default function Landing() {
     }
   };
 
-  const features = [
+  const services = [
     {
-      icon: GlobeLock,
-      title: "Domain Verification Required",
-      description: "Prove ownership before scanning with DNS/file verification",
-      color: "var(--accent-verified)",
-    },
-    {
-      icon: Lock,
-      title: "Consent-Based Active Testing",
+      icon: Shield,
+      title: "Deepfake Detection",
       description:
-        "Explicit opt-in required for intrusive vulnerability checks",
-      color: "var(--accent-warning)",
-    },
-    {
-      icon: Zap,
-      title: "AI-Powered Analysis",
-      description:
-        "Google Gemini AI provides intelligent vulnerability summaries",
+        "Detect AI-generated synthetic media with multi-agent ensemble voting and confidence scoring",
       color: "var(--accent-info)",
     },
     {
-      icon: Eye,
-      title: "Actionable Security Reports",
-      description: "Detailed findings with step-by-step remediation guidance",
-      color: "var(--text-link)",
+      icon: AlertTriangle,
+      title: "Threat Intelligence",
+      description:
+        "Map threats to MITRE ATT&CK frameworks and predict attack vectors with RAG-enhanced analysis",
+      color: "var(--accent-error)",
+    },
+    {
+      icon: Brain,
+      title: "Responsible AI Audit",
+      description:
+        "Assess AI systems for bias, fairness, and ethical alignment with global regulatory standards",
+      color: "var(--accent-warning)",
+    },
+    {
+      icon: Lock,
+      title: "Privacy Compliance",
+      description:
+        "Detect GDPR, CCPA, DPDP, and EU AI Act violations across digital content and data flows",
+      color: "var(--accent-verified)",
+    },
+    {
+      icon: Database,
+      title: "Digital Asset Governance",
+      description:
+        "Audit digital assets for IP rights, licensing compliance, and governance framework adherence",
+      color: "#9b59b6",
+    },
+    {
+      icon: Zap,
+      title: "Security Scanner",
+      description:
+        "Active web vulnerability scans with domain ownership verification and consent-gated testing",
+      color: "#6366f1",
     },
   ];
 
@@ -82,7 +106,7 @@ export default function Landing() {
               Vibe<span className="text-[var(--accent-verified)]">Secure</span>
             </h1>
             <p className="text-base sm:text-lg lg:text-xl text-[var(--text-secondary)] font-mono px-4">
-              Owner-authorized web security scanner with ethical constraints
+              Multi-agent AI governance and ethical security analysis platform
             </p>
           </motion.div>
 
@@ -100,9 +124,9 @@ export default function Landing() {
             >
               <Lock className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">
-                Domain verification required • Consent-gated active scans
+                5 AI Governance Services • Ethical Security Scanner
               </span>
-              <span className="sm:hidden">Verified & Ethical</span>
+              <span className="sm:hidden">AI Governance + Security</span>
             </Badge>
           </motion.div>
           {/* Sign-in button */}
@@ -187,9 +211,7 @@ export default function Landing() {
                     </span>
                   ) : (
                     <>
-                      <span className="hidden sm:inline">
-                        Launch Security Console
-                      </span>
+                      <span className="hidden sm:inline">Launch Platform</span>
                       <span className="sm:hidden">Get Started</span>
                     </>
                   )}
@@ -230,7 +252,7 @@ export default function Landing() {
               <Lock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 mt-0.5 sm:mt-0" />
               <span className="text-center sm:text-left">
                 <span className="hidden sm:inline">
-                  Authenticate with Google to access the scanner
+                  Authenticate with Google to access the platform
                 </span>
                 <span className="sm:hidden">Authenticate with Google</span>
               </span>
@@ -256,26 +278,26 @@ export default function Landing() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-16 px-2"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-12 sm:mb-16 px-2"
           >
-            {features.map((feature, index) => (
+            {services.map((service, index) => (
               <motion.div
-                key={feature.title}
+                key={service.title}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 + index * 0.1 }}
               >
                 <Card hover className="text-left h-full">
-                  <feature.icon
+                  <service.icon
                     className="w-7 h-7 sm:w-8 sm:h-8 mb-3 sm:mb-4"
-                    style={{ color: feature.color }}
+                    style={{ color: service.color }}
                     strokeWidth={1.5}
                   />
                   <h3 className="text-base sm:text-lg font-semibold text-[var(--text-primary)] mb-2 font-display">
-                    {feature.title}
+                    {service.title}
                   </h3>
                   <p className="text-xs sm:text-sm text-[var(--text-tertiary)] font-mono leading-relaxed">
-                    {feature.description}
+                    {service.description}
                   </p>
                 </Card>
               </motion.div>

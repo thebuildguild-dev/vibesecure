@@ -209,16 +209,15 @@ export default function Dashboard() {
             color: "var(--accent-error)",
           },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="terminal-panel flex items-center gap-3">
-            <Icon
-              style={{ color }}
-              className="w-5 h-5 flex-shrink-0 opacity-80"
-            />
-            <div>
-              <div className="text-xl font-mono font-bold" style={{ color }}>
-                {loading ? "—" : value}
-              </div>
-              <div className="text-xs text-[var(--text-tertiary)]">{label}</div>
+          <div key={label} className="terminal-panel flex flex-col gap-2 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono text-[var(--text-tertiary)] uppercase tracking-wider">
+                {label}
+              </span>
+              <Icon style={{ color }} className="w-4 h-4 opacity-70" />
+            </div>
+            <div className="text-3xl font-mono font-bold" style={{ color }}>
+              {loading ? "—" : value}
             </div>
           </div>
         ))}

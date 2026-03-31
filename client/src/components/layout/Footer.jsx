@@ -16,8 +16,8 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-xs sm:text-sm text-[var(--text-tertiary)] font-mono">
-              Ethical web security scanner with owner verification and
-              consent-gated testing.
+              AI Governance &amp; Security Platform — five specialized AI
+              analysis services and an ethical web security scanner.
             </p>
           </div>
 
@@ -29,12 +29,32 @@ export default function Footer() {
             <ul className="space-y-2 text-xs sm:text-sm font-mono">
               <li>
                 <a
-                  href="https://owasp.org/www-project-zap/"
+                  href="https://ai.google.dev/gemini-api"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[var(--text-tertiary)] hover:text-[var(--accent-verified)] transition-colors"
                 >
-                  OWASP ZAP
+                  Google Gemini AI
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://langchain-ai.github.io/langgraph/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--text-tertiary)] hover:text-[var(--accent-verified)] transition-colors"
+                >
+                  LangGraph
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/pgvector/pgvector"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--text-tertiary)] hover:text-[var(--accent-verified)] transition-colors"
+                >
+                  pgvector
                 </a>
               </li>
               <li>
@@ -45,36 +65,6 @@ export default function Footer() {
                   className="text-[var(--text-tertiary)] hover:text-[var(--accent-verified)] transition-colors"
                 >
                   Firebase
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://redis.io/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[var(--text-tertiary)] hover:text-[var(--accent-verified)] transition-colors"
-                >
-                  Redis
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://playwright.dev/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[var(--text-tertiary)] hover:text-[var(--accent-verified)] transition-colors"
-                >
-                  Playwright
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://ai.google.dev/gemini-api"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[var(--text-tertiary)] hover:text-[var(--accent-verified)] transition-colors"
-                >
-                  Google Gemini AI
                 </a>
               </li>
               <li>
@@ -95,6 +85,16 @@ export default function Footer() {
                   className="text-[var(--text-tertiary)] hover:text-[var(--accent-verified)] transition-colors"
                 >
                   PostgreSQL
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://redis.io/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--text-tertiary)] hover:text-[var(--accent-verified)] transition-colors"
+                >
+                  Redis
                 </a>
               </li>
               <li>
@@ -160,20 +160,18 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Powered By */}
+          {/* Services */}
           <div className="space-y-3">
             <h3 className="text-sm font-mono font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-              Powered By
+              Services
             </h3>
             <ul className="space-y-2 text-xs sm:text-sm font-mono text-[var(--text-tertiary)]">
-              <li>Google Gemini AI</li>
-              <li>FastAPI</li>
-              <li>PostgreSQL</li>
-              <li>Celery</li>
-              <li>React + Vite</li>
-              <li>Tailwind CSS</li>
-              <li>Resend (Email)</li>
-              <li>ReportLab (PDF)</li>
+              <li>Deepfake Detection</li>
+              <li>Threat Intelligence</li>
+              <li>Responsible AI Audit</li>
+              <li>Privacy Compliance</li>
+              <li>Digital Asset Governance</li>
+              <li>Security Scanner</li>
             </ul>
           </div>
 
@@ -207,7 +205,7 @@ export default function Footer() {
         <div className="mt-6 sm:mt-8 pt-6 border-t border-slate-700">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
             <p className="text-xs text-[var(--text-tertiary)] font-mono text-center sm:text-left">
-              © {currentYear} VibeSecure. AI-driven ethical security scanning.
+              © {currentYear} VibeSecure. AI Governance &amp; Security Platform.
             </p>
             <p className="text-xs text-[var(--text-tertiary)] font-mono text-center sm:text-right">
               Built with ❤️ by The Build Guild
