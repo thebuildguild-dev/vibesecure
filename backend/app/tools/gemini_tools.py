@@ -18,13 +18,13 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 BRAIN_MODELS = [
-    "gemini-3.1-pro-preview",
-    "gemini-2.5-pro",
+    # "gemini-3.1-pro-preview",
+    # "gemini-2.5-pro",
     "gemini-2.5-flash",
 ]
 
 AGENT_MODELS = [
-    "gemini-3-flash-preview",
+    # "gemini-3-flash-preview",
     "gemini-2.5-flash",
 ]
 
