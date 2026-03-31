@@ -1,4 +1,4 @@
-# VibeSecure
+# VibeSecure V2
 
 **Team:** The Build Guild
 
@@ -13,224 +13,225 @@
 
 ---
 
-## 🎯 Problem Statement
+## About VibeSecure V2
 
-The rise of **vibe-coded and AI-generated websites** has dramatically reduced development time, enabling developers to ship prototypes and MVPs in hours instead of weeks. However, this speed comes at a cost: **many websites are being deployed to production without basic security hardening**.
+VibeSecure is a **complete AI-native governance platform** that helps individuals, creators, developers, businesses, governments, and enterprises safely manage AI-generated content, websites, and custom AI systems.
 
-Most developers launching fast prototypes skip essential security configurations:
+It solves the real-world problems created by generative AI: deepfakes, AI-powered attacks, lack of ethical oversight, and regulatory non-compliance. Instead of using multiple fragmented tools, users get **one unified, easy-to-use platform** that covers **all four pillars of AI and Cybersecurity Governance** plus a full website security scanning service.
 
-- **Missing Security Headers**: No Content-Security-Policy, HSTS, X-Frame-Options
-- **Unsafe Cookie Policies**: Session cookies without Secure, HttpOnly, SameSite flags
-- **Open CORS Policies**: Wildcard origins allowing unauthorized API access
-- **Exposed Endpoints**: Admin panels, debug routes, .env files accessible publicly
-- **Unpatched Libraries**: Frontend dependencies with known vulnerabilities
+Everything runs **locally** in Docker -- your data never leaves your machine.
 
-Traditional security tools are **too complex, intrusive, or time-consuming** for rapid development workflows. Developers need a solution that:
+---
 
-- Works with their fast-paced, prototype-first approach
-- Provides actionable fixes, not just vulnerability reports
-- Doesn't require security expertise to interpret
-- Prevents unauthorized scanning and ensures legal compliance
+## The Four Pillars + Fifth Service
 
-**There is a clear need for a lightweight, developer-friendly security solution that helps website owners detect and fix common risks before deployment.**
+1. **Deepfake Detection Service**
+2. **AI Threat Intelligence Service** (including testing of user's own AI systems)
+3. **Responsible AI Frameworks Service**
+4. **Data Privacy and Regulatory Compliance Service**
+5. **Digital Asset Governance Service** (Owner-based Website Security Scanning)
 
-## 💡 Our Solution
+---
 
-**VibeSecure** is an **owner-authorized web security scanning platform** designed specifically for modern vibe-coded and AI-generated websites.
+## How Every Feature Works
 
-### How It Works
+### 1. Deepfake Detection Service
+- User uploads a **photo** or **short video** (up to 5 minutes).
+- **Keyframe Extractor Agent** (CPU-only, FFmpeg) intelligently picks 8-15 representative frames.
+- **Deepfake Triage Agent** does a fast first-pass check with Gemini Flash.
+- **Forensic Artifact Agent** performs detailed frame-by-frame analysis (facial inconsistencies, lighting mismatches, temporal anomalies, audio artifacts).
+- **Ensemble Voter Agent** combines all results and does semantic similarity search in the RAG knowledge base (Celeb-DF v2, FaceForensics++, DFDC, DeeperForensics).
+- Output: Confidence score, visual heatmap overlay, plain-English explanation, and dataset match notes.
+
+### 2. AI Threat Intelligence Service (Including Custom AI System Testing)
+- **For uploaded content**: Scans for hidden adversarial patterns, suspicious text, or API behavior.
+- **Testing your own AI system**:
+  - User provides their own AI system's **API endpoint** plus authentication.
+  - With **explicit consent**, the **Threat Pattern Agent** generates and sends safe test attacks (prompt injection, adversarial inputs, model extraction queries).
+  - The **Predictive Risk Agent** analyzes responses and calculates a risk score.
+  - Report shows exact successful attacks, risk score, and ready-to-apply fixes.
+
+### 3. Responsible AI Frameworks Service
+- User uploads AI-generated content or describes their AI system.
+- **Responsible AI Auditor Agent** and **Bias and Fairness Agent** evaluate against NIST AI Risk Management Framework and Google Secure AI Framework (SAIF).
+- Produces a **simple scorecard** (Transparency, Fairness, Accountability, Safety, etc.).
+- Gives plain-English suggestions with full reasoning trace for developers.
+
+### 4. Data Privacy and Regulatory Compliance Service
+- **Privacy Scanner Agent** detects PII, missing or weak consent banners, and privacy policy gaps.
+- **Regulatory Mapper Agent** maps findings to exact articles of GDPR, CCPA, DPDP Act (India), and EU AI Act.
+- Generates professional **compliance reports** (JSON).
+
+### 5. Digital Asset Governance Service (Owner-based Website Security Scanning)
+- **Mandatory ownership verification**: User places a token on their domain.
+- After verification, runs full checks (security headers, TLS, CORS, cookies, exposed endpoints, vulnerable libraries).
+- Can use Playwright for JavaScript rendering and OWASP ZAP for active testing (with consent).
+- Results can automatically feed into Privacy Scanner and Regulatory Mapper for cross-service analysis.
+
+---
+
+## User Journey
+
+1. User logs in (Firebase Authentication).
+2. Chooses any service or "All Services".
+3. Uploads content, enters website URL, or connects their own AI system API.
+4. For websites: proves ownership (one-time verification token).
+5. Gives explicit consent for deeper tests.
+6. **Supervisor Agent** plans and spawns the required agents.
+7. Agents collaborate via Redis Streams and shared state.
+8. Final **Governance Bundle** is generated with confidence scores, risk scores, scorecards, compliance reports, and actionable fixes.
+9. User receives email notification.
+
+---
+
+## 11-Agent Swarm Architecture
+
+The system is built on a **LangGraph state machine** where a Supervisor Agent orchestrates 11 domain-specific agents:
+
+| Agent | Service | Model Tier | Role |
+|-------|---------|------------|------|
+| **Supervisor** | All | Brain (Gemini 3.1 Pro Preview) | Orchestration, planning, synthesis |
+| **Keyframe Extractor** | Deepfake | CPU-only (FFmpeg) | Extract frames from video/images |
+| **Deepfake Triage** | Deepfake | Agent (Gemini Flash) | Fast first-pass deepfake check |
+| **Forensic Artifact** | Deepfake | Agent (Gemini Flash) | Frame-by-frame forensic analysis |
+| **Ensemble Voter** | Deepfake | Agent (Gemini Flash) | Majority vote + RAG knowledge base |
+| **Threat Pattern** | Threat Intel | Agent (Gemini Flash) | MITRE ATLAS + safe AI system testing |
+| **Predictive Risk** | Threat Intel | Agent (Gemini Flash) | Attack forecasting and risk prediction |
+| **Responsible AI Auditor** | Responsible AI | Agent (Gemini Flash) | NIST AI RMF + Google SAIF evaluation |
+| **Bias and Fairness** | Responsible AI | Agent (Gemini Flash) | Bias detection across 8 dimensions |
+| **Privacy Scanner** | Privacy | Agent (Gemini Flash) | PII + consent banner + policy analysis |
+| **Regulatory Mapper** | Privacy | Agent (Gemini Flash) | GDPR/CCPA/DPDP/EU AI Act mapping |
+| **Digital Asset Governance** | Digital Asset | Agent (Gemini Flash) | Owner-verified website scanning |
+
+### Model Fallback Strategy
+
+- **Brain agents** (Supervisor): `gemini-3.1-pro-preview` then `gemini-2.5-pro` then `gemini-2.5-flash`
+- **Normal agents**: `gemini-3-flash-preview` then `gemini-2.5-flash`
+- Automatic retry with exponential backoff on transient errors (rate limits, 429, 503)
+
+### Agent Collaboration
+- Agents communicate via **Redis Streams** for real-time event publishing
+- **Shared LangGraph state** passes results between agents
+- Cross-service collaboration: Deepfake agents pass findings to Threat Pattern Agent; Privacy Scanner feeds into Regulatory Mapper; Digital Asset results can trigger Privacy Scanner
+
+
+## How It Works
+
+### V2 Governance Flow
+
+1. **Submit a Governance Job**: Provide a URL, upload media (image/video), or describe your AI system
+2. **Supervisor Plans**: The brain agent analyzes your input and selects which agents to run
+3. **Agent Swarm Executes**: Selected agents run in parallel within their service groups, passing results downstream
+4. **Governance Bundle**: The Supervisor synthesizes all findings into a unified governance report with scores, risks, and recommendations
+
+### V1 Security Scan Flow (Preserved)
 
 1. **Provide Your URL**: Submit your website URL for security analysis
 2. **Verify Ownership**: Place a verification token on your domain (like Google Search Console)
-3. **Automated Scanning**: VibeSecure performs comprehensive security checks:
-   - Security headers analysis (CSP, HSTS, X-Frame-Options)
-   - HTTPS/TLS configuration validation
-   - CORS policy assessment
-   - Exposed endpoint detection (.env, admin panels, backups)
-   - Cookie security evaluation
-   - Frontend library vulnerability scanning
-   - Optional: JavaScript rendering for SPAs
-   - Optional: OWASP ZAP active vulnerability testing (requires explicit consent)
-4. **Get Actionable Results**: Clean dashboard with severity-rated findings
-5. **Fix Quickly**: Copy-paste platform-specific configurations (Vercel, Netlify, Nginx, Apache)
-6. **AI-Powered Guidance**: Google Gemini generates remediation checklists prioritized by impact
+3. **9 Parallel Checks**: Headers, HTTPS, TLS, CORS, libraries, directories, endpoints, reflections, content
+4. **AI Analysis**: Google Gemini synthesizes findings into actionable guidance
+5. **Get Results**: View detailed findings, severity ratings, and copy-paste fix configs
 
-### Safe-by-Default Design
+### Safe-by-Default
 
-To prevent misuse and ensure legal compliance, VibeSecure enforces **mandatory domain ownership verification** before any scan. Advanced scanning modes (OWASP ZAP active testing) require an additional explicit consent token, similar to how DNS configuration proves server control.
-
-### Impact
-
-VibeSecure bridges the gap between **rapid AI-assisted development** and **real-world security readiness** by making security scanning:
-
-- **Accessible**: Simple workflow for non-security experts
-- **Safe**: Owner-authorized to prevent abuse
-- **Practical**: Platform-specific fixes for immediate deployment
-- **Fast**: Automated scanning with email notifications
-
-It helps teams **launch prototypes and production sites with confidence**, reducing exposure to preventable vulnerabilities that could lead to data breaches, XSS attacks, or compliance violations.
-
-## Opportunities & Market Fit
-
-- **AI/Vibe-Coded MVPs**: Security checks before rapid deployments
-- **Indie Developers**: Owner-authorized scans for side projects
-- **Agencies**: Client audits backed by domain ownership verification
-- **DevSecOps-Friendly**: API-based scanning designed for future CI/CD automation
-
-## 🔍 How VibeSecure is Different
-
-| Feature                    | Traditional Scanners      | VibeSecure                                     |
-| -------------------------- | ------------------------- | ---------------------------------------------- |
-| **Target Audience**        | Security professionals    | Vibe-coders, indie devs, startups              |
-| **Domain Verification**    | Optional or absent        | Mandatory before any scan                      |
-| **Active Scan Consent**    | Not required              | Explicit token-based authorization             |
-| **Report Complexity**      | Technical security jargon | Developer-friendly, actionable fixes           |
-| **Platform Integration**   | Manual configuration      | Auto-generated configs (Vercel, Netlify, etc.) |
-| **AI-Powered Guidance**    | Generic findings          | Gemini-generated prioritized checklists        |
-| **Modern Web Support**     | Static analysis only      | JavaScript rendering with Playwright           |
-| **Authentication Testing** | Limited                   | Multiple auth types (OAuth, Bearer, Cookie)    |
-| **Deployment Speed**       | Complex setup             | Docker one-command deployment                  |
-| **Legal Protection**       | User responsibility       | Built-in ownership proof + audit trail         |
-
-## ✨ Key Features
-
-### Security & Authorization
-
-- **Cryptographic Domain Verification** - Token-based ownership proof (file, meta tag, or HTTP header)
-- **Two-Stage Authorization** - Separate consent for passive and active scanning
-- **Audit Trail** - Complete logging of all verification and scanning activities
-- **Token Expiration** - Time-bound verification tokens for security
-
-### Comprehensive Scanning
-
-- **9 Security Scanners**: Headers, TLS, CORS, Directories, Endpoints, Libraries, Reflections, JS Rendering, OWASP ZAP
-- **Passive Scanning** - Non-invasive security checks (headers, TLS, CORS)
-- **Active Scanning** - OWASP ZAP integration for vulnerability testing (with consent)
-- **JavaScript Rendering** - Playwright for SPA/PWA analysis
-- **Endpoint Discovery** - Wordlist probing with configurable intensity
-- **Reflection Testing** - Safe parameter reflection detection
-
-### Developer Experience
-
-- **AI-Powered Summaries** - Google Gemini generates actionable remediation guidance
-- **Multi-Format Reports** - JSON and PDF exports
-- **Platform-Specific Fixes** - Copy-paste configurations for Vercel, Netlify, Nginx, Apache
-- **Email Notifications** - Automated scan completion alerts
-- **RESTful API** - Complete API for integration
-- **Real-Time Status** - Live scan progress tracking
-
-### Authentication & Integration
-
-- **Firebase Authentication** - Enterprise-grade user management
-- **Multiple Auth Types** - Support for Basic, Bearer, Cookie authentication
-- **Asynchronous Architecture** - Non-blocking scans using Celery and Redis
-- **Docker Deployment** - Production-ready containerization
-
-## 🔧 Google Technologies Used
-
-### 1. **Firebase Authentication**
-
-- **Purpose**: User authentication and session management
-- **Implementation**:
-  - OAuth 2.0 integration for secure login
-  - JWT token-based API authentication
-  - User profile management
-  - Email verification
-- **Benefits**:
-  - Enterprise-grade security
-  - Multi-provider support (Google, Email/Password)
-  - Automatic token refresh and validation
-  - Seamless frontend-backend integration
-
-### 2. **Google Gemini AI**
-
-- **Purpose**: AI-powered vulnerability analysis and remediation guidance
-- **Implementation**:
-  - Scan result summarization
-  - Risk assessment and prioritization
-  - Actionable remediation checklists
-  - Natural language security recommendations
-- **Benefits**:
-  - Converts complex security findings into developer-friendly guidance
-  - Prioritizes fixes by impact and effort
-  - Provides context-aware remediation steps
-  - Reduces time from detection to resolution
-
-  - Reduces time from detection to resolution
-
-## 📊 Process Flow Diagram
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant Frontend as React Frontend
-    participant API as FastAPI Backend
-    participant Firebase as Firebase Auth
-    participant DB as PostgreSQL
-    participant Redis as Redis Queue
-    participant Worker as Celery Worker
-    participant Scanners as Security Scanners
-    participant Gemini as Google Gemini
-    participant Email as Resend API
-
-    User->>Frontend: 1. Login
-    Frontend->>Firebase: Verify credentials
-    Firebase-->>Frontend: JWT Token
-    Frontend->>API: 2. Request domain verification
-    API->>DB: Store verification token
-    API-->>Frontend: Verification instructions
-
-    User->>User: 3. Place token on domain
-
-    Frontend->>API: 4. Verify domain ownership
-    API->>API: Check token on domain
-    API->>DB: Mark domain verified
-    API-->>Frontend: Verification success
-
-    Frontend->>API: 5. Create security scan
-    API->>Firebase: Validate JWT
-    API->>DB: Check domain verified
-    API->>DB: Create scan record
-    API->>Redis: Queue scan task
-    API-->>Frontend: Scan ID & status
-
-    Redis->>Worker: 6. Dispatch scan task
-    Worker->>Scanners: Execute security checks
-    Scanners-->>Worker: Findings data
-    Worker->>DB: Store findings
-
-    Worker->>Gemini: 7. Generate AI summary
-    Gemini-->>Worker: Remediation guidance
-    Worker->>DB: Store AI summary
-
-    Worker->>Email: 8. Send completion email
-    Email-->>User: Scan report link
-
-    Frontend->>API: 9. Fetch scan results
-    API->>DB: Retrieve findings
-    API-->>Frontend: Scan results + AI summary
-    Frontend-->>User: Display results
-```
+- Domain ownership verification before any scanning
+- Separate explicit consent for active scanning
+- All passive checks by default (no intrusive probing)
+- Rate-limited and responsible scanning behavior
+- Media uploads are validated and size-limited (100 MB max)
 
 ## 🏗️ System Architecture
 
+### V2 Agent Swarm Architecture
+
+```mermaid
+flowchart TB
+    User[User] -->|Submit job| API[FastAPI Backend]
+    API -->|Queue task| Redis[(Redis)]
+    Redis -->|Dispatch| Worker[Celery Worker]
+
+    Worker -->|Run| Graph[LangGraph State Machine]
+
+    Graph --> Supervisor[Supervisor Agent - Brain]
+
+    Supervisor -->|Plan| DF[Deepfake Detection]
+    Supervisor -->|Plan| TI[AI Threat Intelligence]
+    Supervisor -->|Plan| RA[Responsible AI]
+    Supervisor -->|Plan| PR[Privacy and Compliance]
+    Supervisor -->|Plan| DA[Digital Asset Governance]
+
+    subgraph Deepfake Detection
+        KE[Keyframe Extractor]
+        TA[Triage Agent]
+        FA[Forensic Agent]
+        EV[Ensemble Voter]
+        KE --> TA --> FA --> EV
+    end
+
+    subgraph AI Threat Intelligence
+        TP[Threat Pattern Agent]
+        PRD[Predictive Risk Agent]
+        TP --> PRD
+    end
+
+    subgraph Responsible AI
+        AU[Auditor Agent]
+        BF[Bias and Fairness Agent]
+        AU --> BF
+    end
+
+    subgraph Privacy and Compliance
+        PS[Privacy Scanner Agent]
+        RM[Regulatory Mapper Agent]
+        PS --> RM
+    end
+
+    subgraph Digital Asset Governance
+        DAG[Digital Asset Agent]
+        DAG -->|Uses| Checkers[9 Security Checkers]
+        DAG -->|Uses| ZAP[OWASP ZAP]
+        DAG -->|Uses| PW[Playwright]
+    end
+
+    EV --> Supervisor
+    PRD --> Supervisor
+    BF --> Supervisor
+    RM --> Supervisor
+    DAG --> Supervisor
+
+    Supervisor -->|Synthesize| Bundle[Governance Bundle]
+    Bundle --> DB[(PostgreSQL)]
+
+    Graph -.->|Events| Stream[Redis Streams]
+    Stream -.->|SSE| API
+    API -.->|Real-time| User
+
+    style Supervisor fill:#4f46e5,color:#fff
+    style Graph fill:#7c3aed,color:#fff
+    style Bundle fill:#059669,color:#fff
+    style DB fill:#2563eb,color:#fff
+    style Redis fill:#ef4444,color:#fff
+```
+
+### V1 System Architecture (Preserved)
+
 ```mermaid
 flowchart LR
-    User[👤 User] --> Frontend[⚛️ React Frontend]
-    Frontend -->|JWT Auth| API[🚀 FastAPI]
+    User[User] --> Frontend[React Frontend]
+    Frontend -->|JWT Auth| API[FastAPI]
 
-    API --> Firebase[🔐 Firebase]
-    API --> DB[(🗄️ PostgreSQL)]
-    API --> Cache[(⚡ Redis)]
+    API --> Firebase[Firebase]
+    API --> DB[(PostgreSQL)]
+    API --> Cache[(Redis)]
 
-    Cache -->|Queue Tasks| Worker[⚙️ Celery Workers]
+    Cache -->|Queue Tasks| Worker[Celery Workers]
 
-    Worker --> Scanners[🔍 Security Scanners]
-    Worker --> Playwright[🎭 JS Renderer]
-    Worker --> ZAP[🛡️ OWASP ZAP]
+    Worker --> Scanners[Security Scanners]
+    Worker --> Playwright[JS Renderer]
+    Worker --> ZAP[OWASP ZAP]
 
-    Worker --> AI[🤖 Gemini AI]
-    Worker --> Email[📧 Resend API]
+    Worker --> AI[Gemini AI]
+    Worker --> Email[Resend API]
 
     Worker --> DB
     Email --> User
@@ -241,46 +242,78 @@ flowchart LR
     style Cache fill:#ef4444
 ```
 
-### Architecture Components
+### Process Flow (V2 Governance)
 
-**Frontend Layer**
+```mermaid
+sequenceDiagram
+    participant User
+    participant API as FastAPI
+    participant DB as PostgreSQL
+    participant Redis as Redis/Celery
+    participant Worker as Celery Worker
+    participant Graph as LangGraph
+    participant Supervisor as Supervisor Agent
+    participant Agents as Agent Swarm
+    participant Gemini as Gemini AI
+    participant Stream as Redis Streams
 
-- React + Vite for fast, modern UI
-- TailwindCSS for responsive design
-- Firebase SDK for authentication
+    User->>API: 1. POST /api/governance (submit job)
+    API->>DB: Create GovernanceJob record
+    API->>Redis: Queue governance task
+    API-->>User: Job ID and status
 
-**Backend Layer**
+    Redis->>Worker: 2. Dispatch process_governance_job
+    Worker->>Graph: 3. Run LangGraph swarm
 
-- FastAPI for high-performance REST API
-- Firebase Auth middleware for JWT validation
-- Rate limiting and CORS middleware
+    Graph->>Supervisor: 4. Plan agents
+    Supervisor->>Gemini: Analyze input, select agents
+    Gemini-->>Supervisor: Agent plan
+    Supervisor->>Stream: Publish plan event
 
-**Data Layer**
+    loop For each service group
+        Graph->>Agents: 5. Execute agent group
+        Agents->>Gemini: AI analysis
+        Gemini-->>Agents: Results
+        Agents->>Stream: Publish progress events
+    end
 
-- PostgreSQL for persistent storage (scans, findings, domains, consent)
-- Redis for caching and message brokering
-- SQLModel ORM for type-safe database operations
+    Graph->>Supervisor: 6. Synthesize results
+    Supervisor->>Gemini: Create governance bundle
+    Gemini-->>Supervisor: Final bundle
+    Supervisor->>Stream: Publish completion
 
-**Worker Layer**
+    Worker->>DB: 7. Store results and bundle
+    Worker->>User: 8. Email notification
 
-- Celery for distributed task processing
-- 9 specialized security scanners
-- Playwright for JavaScript rendering
-- OWASP ZAP for active vulnerability scanning
+    User->>API: 9. GET /api/governance/{id}/bundle
+    API->>DB: Retrieve governance bundle
+    API-->>User: Full governance report
 
-**External Services**
+    User->>API: 10. GET /api/governance/{id}/events
+    API->>Stream: Read event stream
+    API-->>User: Real-time agent events
+```
 
-- Google Gemini for AI-powered analysis
-- Resend API for email notifications
-- Firebase Authentication for user management
+## Google Technologies Used
+
+| Technology | Usage | Impact |
+| :---- | :---- | :---- |
+| **Gemini 3.1 Pro Preview** | Brain-tier agent (Supervisor) planning and synthesis | Most capable reasoning for orchestration decisions |
+| **Gemini 2.5 Pro** | Brain-tier fallback | Reliable fallback for complex reasoning tasks |
+| **Gemini 3 Flash Preview** | Normal agent analysis (deepfake, threat, audit, privacy) | Fast, cost-effective agent execution |
+| **Gemini 2.5 Flash** | Universal fallback for all agent tiers | Ensures no agent ever fails due to model unavailability |
+| **Firebase Auth** | User authentication via Google OAuth and Email | Secure, zero-config identity management |
+| **Firebase Admin SDK** | Backend JWT verification, user management | Stateless, scalable auth middleware |
 
 ## 🛠️ Tech Stack
 
 [![Tech Stack](https://skillicons.dev/icons?i=python,fastapi,postgres,redis,docker,react,vite,tailwindcss,firebase,git&perline=10)](https://skillicons.dev)
 
-![Celery](https://img.shields.io/badge/Celery-37814A?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyem0wIDE4Yy00LjQxIDAtOC0zLjU5LTgtOHMzLjU5LTggOC04IDggMy41OSA4IDgtMy41OSA4LTggOHoiLz48L3N2Zz4=)
+![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)
+![Celery](https://img.shields.io/badge/Celery-37814A?style=for-the-badge&logo=celery&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)
-![OWASP ZAP](https://img.shields.io/badge/OWASP_ZAP-5C2D91?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMiAyTDIgN3Y2YzAgNS41NSAzLjg0IDEwLjc0IDkgMTIgNS4xNi0xLjI2IDktNi40NSA5LTEyVjdsLTEwLTV6bTAgMTBsLTQtNGg4bC00IDR6Ii8+PC9zdmc+)
+![OWASP ZAP](https://img.shields.io/badge/OWASP_ZAP-5C2D91?style=for-the-badge)
+![FFmpeg](https://img.shields.io/badge/FFmpeg-007808?style=for-the-badge&logo=ffmpeg&logoColor=white)
 
 ### Backend Technologies
 
@@ -291,6 +324,12 @@ flowchart LR
 - **Uvicorn** - Lightning-fast ASGI server
 - **Pydantic** - Data validation with Python type annotations
 
+**Agent Orchestration**
+
+- **LangGraph 0.2+** - State machine orchestration for multi-agent workflows
+- **Google Gemini (google-genai 0.1+)** - Multi-model AI with automatic fallback chains
+- **Redis Streams** - Real-time agent event publishing and consumption
+
 **Database & ORM**
 
 - **PostgreSQL** - Production-grade relational database
@@ -300,7 +339,7 @@ flowchart LR
 **Task Queue & Caching**
 
 - **Celery 5.3+** - Distributed task queue for async processing
-- **Redis 5.0+** - In-memory data store for caching and message broker
+- **Redis 5.0+** - In-memory data store for caching, message broker, and event streams
 
 **Security Scanning**
 
@@ -309,45 +348,33 @@ flowchart LR
 - **BeautifulSoup4 4.12+** - HTML/XML parsing for content analysis
 - **httpx 0.26+** - Async HTTP client for scanning requests
 
+**Media Processing**
+
+- **FFmpeg** - CPU-only video keyframe extraction and audio analysis
+
 **Authentication & Authorization**
 
 - **Firebase Admin SDK 6.0+** - Backend authentication and user management
 - **JWT tokens** - Stateless authentication
 
-**AI & Reporting**
+**Reporting**
 
-- **Google Gemini (google-genai 0.1+)** - AI-powered vulnerability analysis
 - **ReportLab 3.6+** - PDF report generation
 
 **Integrations**
 
 - **Resend 0.7+** - Transactional email API
 
-**Utilities**
-
-- **python-dotenv 1.0+** - Environment variable management
-- **python-multipart** - File upload support
-
 ### Frontend Technologies
 
 **Core Framework**
 
 - **React 18.3+** - Modern UI library with hooks
-- **React DOM 18.3+** - React renderer for web
 - **Vite 5.1+** - Next-generation frontend tooling
 
-**Routing & State**
-
-- **React Router DOM 6.22+** - Declarative routing for React
-
-**Styling**
+**Styling & UI**
 
 - **TailwindCSS 3.4+** - Utility-first CSS framework
-- **PostCSS 8.4+** - CSS transformations
-- **Autoprefixer 10.4+** - Auto vendor prefixes
-
-**UI & Animation**
-
 - **Framer Motion 11.0+** - Production-ready animation library
 - **Lucide React 0.344+** - Beautiful, consistent icons
 
@@ -357,26 +384,22 @@ flowchart LR
 
 ### DevOps & Deployment
 
-- **Docker** - Containerization for consistent environments
-- **Docker Compose** - Multi-container orchestration
+- **Docker** and **Docker Compose** - Multi-container orchestration
 - **Git** - Version control
-
-### Development Tools
-
-- **ESLint** - JavaScript/React linting
-- **Vite Plugin React** - Fast refresh and JSX support
-
----
-
-**Full Stack Summary:**  
-Modern Python async backend (FastAPI + Celery) with React SPA frontend, PostgreSQL database, Redis caching, Firebase auth, Google Gemini AI, and containerized deployment.
 
 ## 🚀 Local Setup
 
 1. **Clone the repository**
 2. **Configure Environment**
-   - Create a `.env` file in the root directory.
-   - Add necessary Firebase, Database, and API keys.
+   - Create a `.env` file in the root directory
+   - Required variables:
+     ```
+     DATABASE_URL=postgresql://user:pass@db:5432/vibesecure
+     REDIS_URL=redis://redis:6379/0
+     GEMINI_API_KEY=your_gemini_api_key
+     FIREBASE_CREDENTIALS_PATH=secrets/your-firebase-key.json
+     RESEND_API_KEY=your_resend_key
+     ```
 3. **Start Services**
    ```bash
    docker compose up --build
@@ -389,6 +412,77 @@ Modern Python async backend (FastAPI + Celery) with React SPA frontend, PostgreS
 ## API Reference
 
 All authenticated endpoints require a Firebase JWT token in the `Authorization` header: `Bearer <token>`.
+
+### Governance (V2)
+
+#### POST /api/governance
+
+Create a new governance job.
+
+**Body:**
+
+```json
+{
+  "service_type": "deepfake_detection",
+  "input_data": {
+    "url": "https://example.com/video.mp4",
+    "description": "Check this video for deepfake manipulation"
+  }
+}
+```
+
+**Service types:** `deepfake_detection`, `ai_threat_intelligence`, `responsible_ai`, `privacy_compliance`, `digital_asset_governance`
+
+#### POST /api/governance/upload
+
+Create a governance job with file upload (multipart form).
+
+**Form fields:**
+- `file` (required): Image (JPEG, PNG, WebP, GIF) or video (MP4, WebM, MOV, AVI), max 100 MB
+- `service_type` (required): One of the five service types
+- `description` (optional): Additional context
+
+#### GET /api/governance
+
+List all governance jobs for the authenticated user.
+
+**Query Parameters:**
+- `skip` (int): Offset. Default: `0`
+- `limit` (int): Results per page (1-100). Default: `20`
+
+#### GET /api/governance/{job_id}
+
+Get full details of a governance job including agent results.
+
+#### GET /api/governance/{job_id}/events
+
+Get real-time agent events from Redis Streams.
+
+**Query Parameters:**
+- `last_id` (string): Stream ID to read from. Default: `0-0`
+
+**Response:**
+
+```json
+{
+  "events": [
+    {
+      "id": "1234567890-0",
+      "event_type": "agent_start",
+      "agent": "triage_agent",
+      "timestamp": "2026-01-30T12:00:00"
+    }
+  ]
+}
+```
+
+#### GET /api/governance/{job_id}/bundle
+
+Get the final governance bundle (available after job completion).
+
+#### GET /api/governance/{job_id}/agent/{agent_name}
+
+Get results from a specific agent.
 
 ### Authentication
 
@@ -408,107 +502,27 @@ Login with Firebase token.
 
 Get current user profile.
 
-**Response:**
-
-```json
-{
-  "uid": "12345",
-  "email": "user@example.com",
-  "name": "User Name",
-  "email_verified": true,
-  "picture": "..."
-}
-```
-
 ### Domain Verification
 
 #### POST /api/domains/verify/request
 
 Generate a verification token for a domain.
 
-**Body:**
-
-```json
-{
-  "domain": "example.com"
-}
-```
-
-**Response:**
-
-```json
-{
-  "domain": "example.com",
-  "token": "vs_abc123",
-  "instructions": {
-    "file": { "path": "/.well-known/...", "content": "..." },
-    "meta": "...",
-    "header": { "name": "...", "value": "..." }
-  }
-}
-```
-
 #### POST /api/domains/verify/check
 
 Verify that the token has been placed on the domain.
 
-**Body:**
-
-```json
-{
-  "domain": "example.com"
-}
-```
-
 #### DELETE /api/domains/verify/request
 
-Delete pending verification requests for a domain.
-
-**Query:** `?domain=example.com`
-
-**Response:**
-
-```json
-{
-  "message": "Deleted 1 pending verification request(s) for example.com",
-  "domain": "example.com",
-  "deleted_count": 1
-}
-```
+Delete pending verification requests. **Query:** `?domain=example.com`
 
 #### GET /api/domains/{domain}/status
 
 Check verification status of a domain.
 
-**Response:**
-
-```json
-{
-  "domain": "example.com",
-  "verified": true,
-  "verified_at": "2026-01-30T12:00:00",
-  "verified_by_method": "file",
-  "expires_at": "2026-02-30T12:00:00"
-}
-```
-
 #### GET /api/domains/list
 
 List all verified domains for the authenticated user.
-
-**Response:**
-
-```json
-[
-  {
-    "domain": "example.com",
-    "verified": true,
-    "verified_at": "2026-01-30T12:00:00",
-    "verified_by_method": "file",
-    "expires_at": "2026-02-30T12:00:00"
-  }
-]
-```
 
 ### Active Scan Consent
 
@@ -516,65 +530,19 @@ List all verified domains for the authenticated user.
 
 Request consent token for invasive active scanning.
 
-**Body:**
-
-```json
-{
-  "domain": "example.com"
-}
-```
-
 #### POST /api/consent/check
 
 Verify active scan consent file.
 
-**Body:**
-
-```json
-{
-  "domain": "example.com"
-}
-```
-
 #### GET /api/consent/{domain}/status
 
-Check active scan consent status for a domain.
-
-**Response:**
-
-```json
-{
-  "domain": "example.com",
-  "active_allowed": true,
-  "active_consent_verified": true,
-  "verified_at": "2026-01-30T12:00:00",
-  "method": "well-known"
-}
-```
+Check active scan consent status.
 
 #### GET /api/consent/list
 
-List all active scan consents for the authenticated user.
+List all active scan consents.
 
-**Response:**
-
-```json
-{
-  "consents": [
-    {
-      "id": "uuid",
-      "domain": "example.com",
-      "active_allowed": true,
-      "verified_at": "2026-01-30T12:00:00",
-      "method": "well-known",
-      "created_at": "2026-01-30T12:00:00"
-    }
-  ],
-  "total": 1
-}
-```
-
-### Scans
+### Scans (V1)
 
 #### POST /api/scans
 
@@ -590,123 +558,40 @@ Start a new security scan.
     "ignore_robots": false,
     "render_js": true,
     "wordlist_profile": "default",
-    "check_reflections": false,
-    "auth": {
-      "type": "basic",
-      "username": "user",
-      "password": "pass"
-    }
+    "check_reflections": false
   }
 }
 ```
 
-**Options:**
-
-- `allow_active` (boolean): Enable active vulnerability scanning (OWASP ZAP). Requires active scan consent. Default: `false`
-- `ignore_robots` (boolean): Bypass robots.txt restrictions. Default: `false`
-- `render_js` (boolean): Enable JavaScript rendering with Playwright for SPAs. Default: `false`
-- `wordlist_profile` (string): Endpoint discovery intensity - `"minimal"`, `"default"`, or `"deep"`. Default: `"default"`
-- `check_reflections` (boolean): Test for parameter reflection using benign tokens. Default: `false`
-- `auth` (object): Authentication credentials for protected resources:
-  - `type`: `"basic"`, `"bearer"`, or `"cookie"`
-  - For basic: `username` and `password`
-  - For bearer: `token`
-  - For cookie: `cookie` string
-
-**Response:**
-
-```json
-{
-  "id": "scan-uuid",
-  "status": "queued"
-}
-```
+**Options:** `allow_active`, `ignore_robots`, `render_js`, `wordlist_profile` (minimal/default/deep), `check_reflections`, `auth` (basic/bearer/cookie)
 
 #### GET /api/scans
 
-List all scans for the authenticated user.
-
-**Query Parameters:**
-
-- `skip` (int): Offset for pagination. Default: `0`
-- `limit` (int): Number of results (1-100). Default: `20`
-
-**Response:**
-
-```json
-[
-  {
-    "id": "scan-uuid",
-    "url": "https://example.com",
-    "status": "completed",
-    "created_at": "2026-01-30T12:00:00"
-  }
-]
-```
+List all scans. **Query:** `?skip=0&limit=20`
 
 #### GET /api/scans/{scan_id}
 
-Get status and details of a specific scan.
+Get scan status and details.
 
 #### GET /api/scans/{scan_id}/findings
 
-Get list of security vulnerabilities found.
-
-**Response:**
-
-```json
-[
-  {
-    "title": "Missing Content-Security-Policy",
-    "severity": "medium",
-    "description": "...",
-    "remediation": "..."
-  }
-]
-```
+Get security findings.
 
 #### POST /api/scans/{scan_id}/findings
 
-Manually add a finding to a scan.
-
-**Body:**
-
-```json
-{
-  "title": "Custom Security Issue",
-  "severity": "high",
-  "description": "Detailed description",
-  "remediation": "How to fix",
-  "evidence": "Supporting evidence"
-}
-```
-
-**Response:**
-
-```json
-{
-  "id": "finding-uuid",
-  "scan_id": "scan-uuid",
-  "title": "Custom Security Issue",
-  "severity": "high"
-}
-```
-
-### Reports & AI
+Manually add a finding.
 
 #### GET /api/scans/{scan_id}/ai-summary
 
-Get an AI-generated summary and remediation checklist.
+Get AI-generated summary and remediation checklist.
 
 #### GET /api/scans/{scan_id}/report
 
-Download full report.
-**Query:** `?format=json` or `?format=pdf`
+Download report. **Query:** `?format=json` or `?format=pdf`
 
 #### GET /api/scans/{scan_id}/fix-config
 
-Get copy-paste valid configuration files for remediation.
-**Query:** `?platform=vercel` (or netlify, nginx, apache)
+Get platform-specific fix configs. **Query:** `?platform=vercel` (or netlify, nginx, apache)
 
 ## License
 
@@ -714,4 +599,4 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
-Built with ❤️ by The Build Guild
+Built with care by The Build Guild

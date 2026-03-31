@@ -1,4 +1,5 @@
 import logging
+
 from celery import Celery
 
 try:
@@ -6,6 +7,7 @@ try:
 except ImportError:
     import sys
     from pathlib import Path
+
     sys.path.insert(0, str(Path(__file__).parent.parent.parent))
     from src.core.config import settings
 
@@ -25,7 +27,7 @@ celery_app = Celery(
     "vibesecure_worker",
     broker=REDIS_BROKER_URL,
     backend=REDIS_BROKER_URL,
-    include=["src.worker.tasks"],
+    include=["src.worker.tasks", "src.worker.governance_tasks"],
 )
 
 celery_app.conf.update(

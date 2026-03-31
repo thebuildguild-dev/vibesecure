@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     iputils-ping \
     dnsutils \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -27,7 +28,7 @@ RUN playwright install --with-deps chromium && \
 COPY backend/ .
 
 # Create necessary directories
-RUN mkdir -p storage uploads uploads/screenshots
+RUN mkdir -p storage uploads uploads/screenshots uploads/governance
 
 # Expose port for API
 EXPOSE 8000

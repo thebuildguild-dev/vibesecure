@@ -1,21 +1,22 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict, Any
-from enum import Enum
-from sqlmodel import SQLModel, Field, Relationship, Column
-from sqlalchemy import JSON
-from pydantic import field_validator
 import json
 import uuid
+from datetime import UTC, datetime
+from enum import Enum
+from typing import Any, Optional
+
+from pydantic import field_validator
+from sqlalchemy import JSON
+from sqlmodel import Column, Field, Relationship, SQLModel
 
 
 def now_utc() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
-def get_risk_label(score: Optional[int]) -> str:
+def get_risk_label(score: int | None) -> str:
     if score is None:
         return "Unknown"
-    
+
     if score <= 30:
         return "Low"
     elif score <= 60:
@@ -44,16 +45,16 @@ class Severity(str, Enum):
 class FindingBase(SQLModel):
     title: str
     severity: Severity = Severity.info
-    remediation: Optional[str] = None
+    remediation: str | None = None
     confidence: int = Field(default=50, ge=0, le=100)
-    path: Optional[str] = None
+    path: str | None = None
 
 
 class Finding(FindingBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     scan_id: str = Field(foreign_key="scan.id", index=True)
     created_at: datetime = Field(default_factory=now_utc)
-    
+
     scan: Optional["Scan"] = Relationship(back_populates="findings_rel")
 
 
@@ -69,30 +70,30 @@ class FindingRead(FindingBase):
 
 class ScanBase(SQLModel):
     url: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class Scan(ScanBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     status: ScanStatus = ScanStatus.queued
-    user_email: Optional[str] = Field(default=None, index=True)
+    user_email: str | None = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=now_utc)
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    celery_task_id: Optional[str] = None
-    result: Optional[str] = None
-    risk_score: Optional[int] = Field(default=None)
-    scan_confidence: Optional[str] = Field(default=None)
-    options: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
-    verification_id: Optional[str] = Field(default=None, foreign_key="domainverification.id")
-    
-    findings_rel: List[Finding] = Relationship(back_populates="scan")
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    celery_task_id: str | None = None
+    result: str | None = None
+    risk_score: int | None = Field(default=None)
+    scan_confidence: str | None = Field(default=None)
+    options: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    verification_id: str | None = Field(default=None, foreign_key="domainverification.id")
+
+    findings_rel: list[Finding] = Relationship(back_populates="scan")
 
 
 class ScanCreate(SQLModel):
     url: str
-    description: Optional[str] = None
-    options: Optional[Dict[str, Any]] = None
+    description: str | None = None
+    options: dict[str, Any] | None = None
 
     @field_validator("url")
     @classmethod
@@ -105,19 +106,19 @@ class ScanCreate(SQLModel):
 class ScanRead(SQLModel):
     id: str
     url: str
-    description: Optional[str] = None
+    description: str | None = None
     status: ScanStatus
     created_at: datetime
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    risk_score: Optional[int] = None
-    risk_label: Optional[str] = None
-    scan_confidence: Optional[str] = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    risk_score: int | None = None
+    risk_label: str | None = None
+    scan_confidence: str | None = None
 
 
 class ScanDetail(ScanRead):
-    findings: List[FindingRead] = []
-    result: Optional[dict] = None
+    findings: list[FindingRead] = []
+    result: dict | None = None
 
     @classmethod
     def from_scan(cls, scan: Scan) -> "ScanDetail":
@@ -127,7 +128,7 @@ class ScanDetail(ScanRead):
                 result = json.loads(scan.result)
             except json.JSONDecodeError:
                 result = {}
-        
+
         findings = [
             FindingRead(
                 id=f.id,
@@ -141,7 +142,7 @@ class ScanDetail(ScanRead):
             )
             for f in scan.findings_rel
         ]
-        
+
         return cls(
             id=scan.id,
             url=scan.url,
@@ -175,24 +176,27 @@ def create_scan(session, scan_data: ScanCreate) -> Scan:
     return db_scan
 
 
-def get_scan(session, scan_id: str) -> Optional[Scan]:
+def get_scan(session, scan_id: str) -> Scan | None:
     return session.get(Scan, scan_id)
 
 
-def get_scans(session, skip: int = 0, limit: int = 20) -> List[Scan]:
+def get_scans(session, skip: int = 0, limit: int = 20) -> list[Scan]:
     from sqlmodel import select
+
     statement = select(Scan).order_by(Scan.created_at.desc()).offset(skip).limit(limit)
     return session.exec(statement).all()
 
 
-def update_scan_status(session, scan_id: str, status: ScanStatus, started: bool = False, finished: bool = False) -> Optional[Scan]:
+def update_scan_status(
+    session, scan_id: str, status: ScanStatus, started: bool = False, finished: bool = False
+) -> Scan | None:
     scan = session.get(Scan, scan_id)
     if scan:
         scan.status = status
         if started:
-            scan.started_at = datetime.now(timezone.utc)
+            scan.started_at = datetime.now(UTC)
         if finished:
-            scan.finished_at = datetime.now(timezone.utc)
+            scan.finished_at = datetime.now(UTC)
         session.add(scan)
         session.commit()
         session.refresh(scan)
@@ -207,17 +211,18 @@ def create_finding(session, finding_data: FindingCreate) -> Finding:
     return db_finding
 
 
-def get_finding(session, finding_id: str) -> Optional[Finding]:
+def get_finding(session, finding_id: str) -> Finding | None:
     return session.get(Finding, finding_id)
 
 
-def get_findings_for_scan(session, scan_id: str) -> List[Finding]:
+def get_findings_for_scan(session, scan_id: str) -> list[Finding]:
     from sqlmodel import select
+
     statement = select(Finding).where(Finding.scan_id == scan_id).order_by(Finding.created_at)
     return session.exec(statement).all()
 
 
-def create_findings_bulk(session, scan_id: str, findings_data: List[dict]) -> List[Finding]:
+def create_findings_bulk(session, scan_id: str, findings_data: list[dict]) -> list[Finding]:
     findings = []
     for data in findings_data:
         finding = Finding(
@@ -244,16 +249,16 @@ class DomainVerification(SQLModel, table=True):
     token_created_at: datetime = Field(default_factory=now_utc)
     token_expires_at: datetime
     verified: bool = False
-    verified_at: Optional[datetime] = None
-    verified_by_method: Optional[str] = None
-    last_checked_at: Optional[datetime] = None
+    verified_at: datetime | None = None
+    verified_by_method: str | None = None
+    last_checked_at: datetime | None = None
 
 
 class DomainVerificationAudit(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     verification_id: str = Field(foreign_key="domainverification.id", index=True)
     action: str
-    details: Optional[str] = None
+    details: str | None = None
     created_at: datetime = Field(default_factory=now_utc)
 
 
@@ -262,7 +267,7 @@ class Consent(SQLModel, table=True):
     domain: str = Field(index=True)
     user_email: str = Field(index=True)
     active_allowed: bool = Field(default=False)
-    verified_at: Optional[datetime] = None
+    verified_at: datetime | None = None
     method: str = Field(default="well-known")
     created_at: datetime = Field(default_factory=now_utc)
 
@@ -270,11 +275,89 @@ class Consent(SQLModel, table=True):
 class ScanExport(SQLModel):
     scan_id: str
     url: str
-    description: Optional[str]
+    description: str | None
     status: str
     created_at: str
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
-    findings: Optional[list] = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    findings: list | None = None
     generated_at: str
     format: str = "json"
+
+
+# ─── V2: Agent Swarm Models ─────────────────────────────────────
+
+
+class JobStatus(str, Enum):
+    pending = "pending"
+    running = "running"
+    completed = "completed"
+    failed = "failed"
+
+
+class ServiceType(str, Enum):
+    deepfake = "deepfake"
+    threat_intel = "threat_intel"
+    responsible_ai = "responsible_ai"
+    privacy = "privacy"
+    digital_asset = "digital_asset"
+    all = "all"
+
+
+class GovernanceJob(SQLModel, table=True):
+    """A governance job that runs the agent swarm."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_email: str = Field(index=True)
+    service_type: ServiceType
+    status: JobStatus = JobStatus.pending
+    input_data: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    governance_bundle: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    agent_results: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
+    agents_planned: list[str] | None = Field(default=None, sa_column=Column(JSON))
+    agents_completed: list[str] | None = Field(default=None, sa_column=Column(JSON))
+    error: str | None = None
+    created_at: datetime = Field(default_factory=now_utc)
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    celery_task_id: str | None = None
+
+    # Media file info (for deepfake service)
+    file_path: str | None = None
+    file_type: str | None = None  # image, video
+
+
+class GovernanceJobCreate(SQLModel):
+    service_type: ServiceType
+    url: str | None = None
+    content: str | None = None
+    ai_system_description: str | None = None
+    api_endpoint: str | None = None
+    ai_system_auth: dict[str, Any] | None = None
+    ai_system_consent: bool = False
+    scan_options: dict[str, Any] | None = None
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str | None) -> str | None:
+        if v and not v.startswith(("http://", "https://")):
+            raise ValueError("URL must start with http:// or https://")
+        return v
+
+
+class GovernanceJobRead(SQLModel):
+    id: str
+    service_type: ServiceType
+    status: JobStatus
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    agents_planned: list[str] | None = None
+    agents_completed: list[str] | None = None
+    error: str | None = None
+
+
+class GovernanceJobDetail(GovernanceJobRead):
+    governance_bundle: dict[str, Any] | None = None
+    agent_results: dict[str, Any] | None = None
+    input_data: dict[str, Any] | None = None
