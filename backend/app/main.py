@@ -9,8 +9,13 @@ from app.core.middleware import RateLimitMiddleware
 from app.routers.ai_test import router as governance_router
 from app.routers.auth import router as auth_router
 from app.routers.consent import router as consent_router
+from app.routers.deepfake import router as deepfake_router
+from app.routers.digital_asset import router as digital_asset_router
 from app.routers.domain import router as domains_router
+from app.routers.privacy import router as privacy_router
+from app.routers.responsible_ai import router as responsible_ai_router
 from app.routers.scan import router as scans_router
+from app.routers.threat_intel import router as threat_intel_router
 
 
 @asynccontextmanager
@@ -43,6 +48,11 @@ app.include_router(scans_router, prefix="/api")
 app.include_router(domains_router, prefix="/api")
 app.include_router(consent_router, prefix="/api")
 app.include_router(governance_router, prefix="/api")
+app.include_router(deepfake_router, prefix="/api")
+app.include_router(threat_intel_router, prefix="/api")
+app.include_router(responsible_ai_router, prefix="/api")
+app.include_router(privacy_router, prefix="/api")
+app.include_router(digital_asset_router, prefix="/api")
 
 
 @app.get("/health")
