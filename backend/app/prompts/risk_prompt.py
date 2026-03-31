@@ -1,42 +1,17 @@
-"""
-Predictive Risk Agent - attack forecasting and risk prediction.
-Analyzes patterns and predicts potential future attacks.
-"""
+"""Prompt templates for the Predictive Risk Agent."""
 
-import json
-import logging
-
-from app.agents.base_agent import BaseAgent
-from app.graphs.state import AgentState
-
-logger = logging.getLogger(__name__)
+SYSTEM_INSTRUCTION = (
+    "You are a predictive AI security analyst. Be realistic and evidence-based in your predictions."
+)
 
 
-class PredictiveRiskAgent(BaseAgent):
-    name = "predictive_risk"
-    description = "AI attack forecasting and risk prediction"
-    is_brain = True
-
-    def process(self, state: AgentState) -> dict:
-        input_data = state.get("input_data", {})
-        results = state.get("results", {})
-
-        threat_results = results.get("threat_pattern", {})
-        content = input_data.get("content", "")
-        api_endpoint = input_data.get("api_endpoint", "")
-        ai_system_description = input_data.get("ai_system_description", "")
-
-        # Gather all findings so far
-        existing_findings = json.dumps(
-            {
-                k: v
-                for k, v in results.items()
-                if k != "supervisor" and isinstance(v, dict) and v.get("status") != "error"
-            },
-            default=str,
-        )[:5000]
-
-        prompt = f"""You are a predictive AI security analyst specializing in attack forecasting.
+def build_prompt(
+    *,
+    ai_system_description: str,
+    api_endpoint: str,
+    existing_findings: str,
+) -> str:
+    return f"""You are a predictive AI security analyst specializing in attack forecasting.
 
 Based on the current threat analysis results, predict potential future attack vectors and risks.
 
@@ -89,20 +64,3 @@ Return JSON:
     ],
     "executive_summary": "2-3 sentence summary"
 }}"""
-
-        try:
-            prediction = self.generate_json(
-                prompt,
-                system_instruction="You are a predictive AI security analyst. Be realistic and evidence-based in your predictions.",
-            )
-            prediction["status"] = "success"
-            return prediction
-
-        except Exception as e:
-            logger.error(f"Predictive risk analysis failed: {e}")
-            return {
-                "status": "error",
-                "error": str(e),
-                "risk_score": 50,
-                "risk_level": "medium",
-            }

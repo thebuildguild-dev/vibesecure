@@ -1,14 +1,6 @@
-"""
-Bias & Fairness Agent - evaluates AI systems and content for bias.
-"""
+"""Prompt templates for the Bias & Fairness Agent."""
 
 import json
-import logging
-
-from app.agents.base_agent import BaseAgent
-from app.graphs.state import AgentState
-
-logger = logging.getLogger(__name__)
 
 BIAS_DIMENSIONS = [
     "gender_bias",
@@ -21,25 +13,19 @@ BIAS_DIMENSIONS = [
     "cultural_bias",
 ]
 
+SYSTEM_INSTRUCTION = (
+    "You are a fairness and bias expert. Be objective and evidence-based. "
+    "Do not flag bias without supporting evidence."
+)
 
-class BiasFairnessAgent(BaseAgent):
-    name = "bias_fairness"
-    description = "Evaluates AI systems and content for various forms of bias"
 
-    def process(self, state: AgentState) -> dict:
-        input_data = state.get("input_data", {})
-        results = state.get("results", {})
-
-        content = input_data.get("content", "")
-        ai_system_description = input_data.get("ai_system_description", "")
-
-        # Get auditor results for context
-        auditor_results = results.get("responsible_ai_auditor", {})
-        fairness_score = 50
-        if auditor_results.get("scorecard"):
-            fairness_score = auditor_results["scorecard"].get("fairness", {}).get("score", 50)
-
-        prompt = f"""You are a Bias & Fairness specialist analyzing AI-generated content or AI systems.
+def build_prompt(
+    *,
+    ai_system_description: str,
+    content: str,
+    fairness_score: int,
+) -> str:
+    return f"""You are a Bias & Fairness specialist analyzing AI-generated content or AI systems.
 
 Content to analyze:
 - Description: {ai_system_description[:2000] if ai_system_description else "N/A"}
@@ -83,19 +69,3 @@ Return JSON:
     "recommendations": ["recommendation 1"],
     "plain_english_summary": "Non-technical summary"
 }}"""
-
-        try:
-            result = self.generate_json(
-                prompt,
-                system_instruction="You are a fairness and bias expert. Be objective and evidence-based. Do not flag bias without supporting evidence.",
-            )
-            result["status"] = "success"
-            return result
-
-        except Exception as e:
-            logger.error(f"Bias & fairness analysis failed: {e}")
-            return {
-                "status": "error",
-                "error": str(e),
-                "overall_bias_score": 0,
-            }

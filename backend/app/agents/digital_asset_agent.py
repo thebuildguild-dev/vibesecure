@@ -216,6 +216,3 @@ Return JSON:
         scan_results["ownership_verified"] = True
         scan_results["active_scan_enabled"] = allow_active
         return scan_results
-
-
-digital_asset_governance_agent = DigitalAssetGovernanceAgent()

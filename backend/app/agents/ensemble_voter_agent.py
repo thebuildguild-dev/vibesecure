@@ -179,6 +179,3 @@ Return JSON:
             "plain_explanation": rag_result.get("plain_english_explanation", ""),
             "heatmap_regions": rag_result.get("heatmap_regions", []),
         }
-
-
-ensemble_voter_agent = EnsembleVoterAgent()

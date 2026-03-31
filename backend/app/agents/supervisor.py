@@ -9,6 +9,7 @@ import logging
 from app.agents.base_agent import BaseAgent
 from app.agents.messaging import publish_event
 from app.graphs.state import SERVICE_AGENT_MAP, AgentState
+from app.tools.gemini_tools import parse_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +83,7 @@ Return valid JSON."""
 
         try:
             text = self.generate(prompt, response_mime_type="application/json")
-            return json.loads(
-                text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-            )
+            return parse_json_response(text)
         except Exception as e:
             logger.error(f"Failed to synthesize bundle: {e}")
             return {
@@ -113,6 +112,3 @@ Return valid JSON."""
             "planned_agents": agents,
             "service_type": state.get("service_type", ""),
         }
-
-
-supervisor_agent = SupervisorAgent()

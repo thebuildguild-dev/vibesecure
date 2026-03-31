@@ -249,6 +249,3 @@ Return JSON:
             "status": "success",
             **results,
         }
-
-
-threat_pattern_agent = ThreatPatternAgent()

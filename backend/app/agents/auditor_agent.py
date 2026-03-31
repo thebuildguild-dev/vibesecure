@@ -126,6 +126,3 @@ Return JSON:
                 "overall_score": 0,
                 "overall_grade": "N/A",
             }
-
-
-responsible_ai_auditor_agent = ResponsibleAIAuditorAgent()

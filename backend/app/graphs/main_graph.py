@@ -4,6 +4,9 @@ LangGraph workflow definition for the VibeSecure agent swarm.
 Every agent is its own graph node so LangGraph manages state transitions,
 checkpointing, and reducer application at the per-agent level.
 
+Agents are created lazily (on first use) to avoid heavy module-level
+instantiation and to keep import time fast.
+
 Graph structure:
   supervisor_plan --> [agent nodes chained per service group] --> synthesize --> END
 
@@ -13,40 +16,117 @@ straight to synthesis when nothing more is planned).
 """
 
 import logging
+from functools import lru_cache
 
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
-from app.agents.auditor_agent import responsible_ai_auditor_agent
-from app.agents.bias_fairness_agent import bias_fairness_agent
-from app.agents.deepfake_triage_agent import deepfake_triage_agent
-from app.agents.digital_asset_agent import digital_asset_governance_agent
-from app.agents.ensemble_voter_agent import ensemble_voter_agent
-from app.agents.forensic_analysis_agent import forensic_artifact_agent
-from app.agents.keyframe_extractor_agent import keyframe_extractor_agent
 from app.agents.messaging import publish_event
-from app.agents.predictive_risk_agent import predictive_risk_agent
-from app.agents.privacy_scanner_agent import privacy_scanner_agent
-from app.agents.regulatory_mapper_agent import regulatory_mapper_agent
-from app.agents.supervisor import supervisor_agent
-from app.agents.threat_pattern_agent import threat_pattern_agent
 from app.graphs.state import SERVICE_AGENT_MAP, AgentState
 
 logger = logging.getLogger(__name__)
 
-# ─── Agent instance registry ────────────────────────────────────
+# ─── Lazy agent factories ───────────────────────────────────────
+# Each factory is cached so only one instance is ever created.
 
-AGENT_REGISTRY = {
-    "keyframe_extractor": keyframe_extractor_agent,
-    "deepfake_triage": deepfake_triage_agent,
-    "forensic_artifact": forensic_artifact_agent,
-    "ensemble_voter": ensemble_voter_agent,
-    "threat_pattern": threat_pattern_agent,
-    "predictive_risk": predictive_risk_agent,
-    "responsible_ai_auditor": responsible_ai_auditor_agent,
-    "bias_fairness": bias_fairness_agent,
-    "privacy_scanner": privacy_scanner_agent,
-    "regulatory_mapper": regulatory_mapper_agent,
-    "digital_asset_governance": digital_asset_governance_agent,
+
+@lru_cache(maxsize=1)
+def _get_supervisor():
+    from app.agents.supervisor import SupervisorAgent
+
+    return SupervisorAgent()
+
+
+@lru_cache(maxsize=1)
+def _get_keyframe_extractor():
+    from app.agents.keyframe_extractor_agent import KeyframeExtractorAgent
+
+    return KeyframeExtractorAgent()
+
+
+@lru_cache(maxsize=1)
+def _get_deepfake_triage():
+    from app.agents.deepfake_triage_agent import DeepfakeTriageAgent
+
+    return DeepfakeTriageAgent()
+
+
+@lru_cache(maxsize=1)
+def _get_forensic_artifact():
+    from app.agents.forensic_analysis_agent import ForensicArtifactAgent
+
+    return ForensicArtifactAgent()
+
+
+@lru_cache(maxsize=1)
+def _get_ensemble_voter():
+    from app.agents.ensemble_voter_agent import EnsembleVoterAgent
+
+    return EnsembleVoterAgent()
+
+
+@lru_cache(maxsize=1)
+def _get_threat_pattern():
+    from app.agents.threat_pattern_agent import ThreatPatternAgent
+
+    return ThreatPatternAgent()
+
+
+@lru_cache(maxsize=1)
+def _get_predictive_risk():
+    from app.agents.predictive_risk_agent import PredictiveRiskAgent
+
+    return PredictiveRiskAgent()
+
+
+@lru_cache(maxsize=1)
+def _get_responsible_ai_auditor():
+    from app.agents.auditor_agent import ResponsibleAIAuditorAgent
+
+    return ResponsibleAIAuditorAgent()
+
+
+@lru_cache(maxsize=1)
+def _get_bias_fairness():
+    from app.agents.bias_fairness_agent import BiasFairnessAgent
+
+    return BiasFairnessAgent()
+
+
+@lru_cache(maxsize=1)
+def _get_privacy_scanner():
+    from app.agents.privacy_scanner_agent import PrivacyScannerAgent
+
+    return PrivacyScannerAgent()
+
+
+@lru_cache(maxsize=1)
+def _get_regulatory_mapper():
+    from app.agents.regulatory_mapper_agent import RegulatoryMapperAgent
+
+    return RegulatoryMapperAgent()
+
+
+@lru_cache(maxsize=1)
+def _get_digital_asset_governance():
+    from app.agents.digital_asset_agent import DigitalAssetGovernanceAgent
+
+    return DigitalAssetGovernanceAgent()
+
+
+# Maps agent name to its lazy factory.
+AGENT_FACTORIES: dict[str, callable] = {
+    "keyframe_extractor": _get_keyframe_extractor,
+    "deepfake_triage": _get_deepfake_triage,
+    "forensic_artifact": _get_forensic_artifact,
+    "ensemble_voter": _get_ensemble_voter,
+    "threat_pattern": _get_threat_pattern,
+    "predictive_risk": _get_predictive_risk,
+    "responsible_ai_auditor": _get_responsible_ai_auditor,
+    "bias_fairness": _get_bias_fairness,
+    "privacy_scanner": _get_privacy_scanner,
+    "regulatory_mapper": _get_regulatory_mapper,
+    "digital_asset_governance": _get_digital_asset_governance,
 }
 
 # Ordered list of (service_group, [agents_in_sequence]).
@@ -86,15 +166,9 @@ def _next_active_node(state: AgentState, after_agent: str) -> str:
 
 
 def supervisor_plan_node(state: AgentState) -> dict:
-    """Supervisor plans which agents to run.
-
-    Returns a partial delta -- ``active_agents`` is set (not appended) because
-    the supervisor is the sole writer and it needs a full replacement, which is
-    correct since ``active_agents`` has no reducer (plain overwrite).
-    """
-    delta = supervisor_agent.run(state)
+    """Supervisor plans which agents to run."""
+    delta = _get_supervisor().run(state)
     planned = delta.get("results", {}).get("supervisor", {}).get("planned_agents", [])
-    # Merge the delta from supervisor.run() with the plan metadata.
     return {
         **delta,
         "active_agents": planned,
@@ -111,11 +185,11 @@ def _make_agent_node(agent_name: str):
     """
 
     def node_fn(state: AgentState) -> dict:
-        agent = AGENT_REGISTRY.get(agent_name)
-        if agent is None:
-            logger.error(f"Agent {agent_name} not found in registry")
+        factory = AGENT_FACTORIES.get(agent_name)
+        if factory is None:
+            logger.error(f"Agent {agent_name} not found in factories")
             return {}
-        return agent.run(state)
+        return factory().run(state)
 
     node_fn.__name__ = f"node_{agent_name}"
     return node_fn
@@ -123,7 +197,7 @@ def _make_agent_node(agent_name: str):
 
 def synthesize_node(state: AgentState) -> dict:
     """Supervisor synthesizes all results into the governance bundle."""
-    bundle = supervisor_agent.synthesize_bundle(state)
+    bundle = _get_supervisor().synthesize_bundle(state)
 
     publish_event(
         state.get("job_id", ""),
@@ -205,8 +279,9 @@ def build_swarm_graph() -> StateGraph:
 
 
 def compile_swarm():
-    """Compile and return the runnable swarm graph."""
-    return build_swarm_graph().compile()
+    """Compile and return the runnable swarm graph with in-memory checkpointing."""
+    checkpointer = MemorySaver()
+    return build_swarm_graph().compile(checkpointer=checkpointer)
 
 
 # Pre-compile the graph for reuse across jobs.
@@ -258,7 +333,10 @@ def run_swarm(
     )
 
     try:
-        final_state = swarm_app.invoke(initial_state)
+        final_state = swarm_app.invoke(
+            initial_state,
+            config={"configurable": {"thread_id": job_id}},
+        )
 
         publish_event(
             job_id,

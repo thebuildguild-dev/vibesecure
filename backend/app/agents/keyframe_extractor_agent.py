@@ -133,39 +133,48 @@ class KeyframeExtractorAgent(BaseAgent):
                 "frames": [],
             }
 
-        output_dir = tempfile.mkdtemp(prefix="vibesecure_keyframes_")
+        with tempfile.TemporaryDirectory(prefix="vibesecure_keyframes_") as output_dir:
+            if file_type == "video":
+                frames = self._extract_video_keyframes(file_path, output_dir)
+                audio_path = self._extract_audio_track(file_path, output_dir)
 
-        if file_type == "video":
-            frames = self._extract_video_keyframes(file_path, output_dir)
-            audio_path = self._extract_audio_track(file_path, output_dir)
+                # Copy frames out of the temp dir so downstream agents can read them
+                persist_dir = tempfile.mkdtemp(prefix="vibesecure_frames_")
+                persisted_frames = []
+                for f in frames:
+                    dest = os.path.join(persist_dir, os.path.basename(f))
+                    os.replace(f, dest)
+                    persisted_frames.append(dest)
 
-            return {
-                "status": "success",
-                "file_type": "video",
-                "frames": frames,
-                "frame_count": len(frames),
-                "audio_path": audio_path,
-                "has_audio": audio_path is not None,
-                "output_dir": output_dir,
-            }
+                persisted_audio = None
+                if audio_path and os.path.exists(audio_path):
+                    dest = os.path.join(persist_dir, "audio.wav")
+                    os.replace(audio_path, dest)
+                    persisted_audio = dest
 
-        elif file_type == "image":
-            # For images, just copy/reference the original
-            return {
-                "status": "success",
-                "file_type": "image",
-                "frames": [file_path],
-                "frame_count": 1,
-                "audio_path": None,
-                "has_audio": False,
-                "output_dir": output_dir,
-            }
+                return {
+                    "status": "success",
+                    "file_type": "video",
+                    "frames": persisted_frames,
+                    "frame_count": len(persisted_frames),
+                    "audio_path": persisted_audio,
+                    "has_audio": persisted_audio is not None,
+                    "output_dir": persist_dir,
+                }
+
+            elif file_type == "image":
+                return {
+                    "status": "success",
+                    "file_type": "image",
+                    "frames": [file_path],
+                    "frame_count": 1,
+                    "audio_path": None,
+                    "has_audio": False,
+                    "output_dir": None,
+                }
 
         return {
             "status": "error",
             "error": f"Unsupported file type: {file_type}",
             "frames": [],
         }
-
-
-keyframe_extractor_agent = KeyframeExtractorAgent()

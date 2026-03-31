@@ -2,15 +2,27 @@
 Forensic Artifact Agent - detailed frame-by-frame analysis.
 Performs deep forensic analysis for facial inconsistencies, lighting mismatches,
 temporal anomalies, and audio artifacts.
+Sends actual image data to Gemini via the multimodal API.
 """
 
 import logging
 import os
 
+from google.genai import types as genai_types
+
 from app.agents.base_agent import BaseAgent
 from app.graphs.state import AgentState
+from app.prompts import forensic_prompt
+from app.schemas.agent_outputs import AudioAnalysisResult, ForensicBatchResult
 
 logger = logging.getLogger(__name__)
+
+
+def _image_part(path: str) -> genai_types.Part:
+    """Build a Gemini ``Part`` with inline image data."""
+    with open(path, "rb") as f:
+        data = f.read()
+    return genai_types.Part.from_bytes(data=data, mime_type="image/jpeg")
 
 
 class ForensicArtifactAgent(BaseAgent):
@@ -19,10 +31,9 @@ class ForensicArtifactAgent(BaseAgent):
     is_brain = True
 
     def _analyze_frames(self, frames: list[str], file_type: str) -> dict:
-        """Perform detailed forensic analysis on frames."""
+        """Perform detailed forensic analysis on frames using multimodal API."""
         frame_analyses = []
 
-        # Analyze frames in batches
         batch_size = 5
         for i in range(0, len(frames), batch_size):
             batch = frames[i : i + batch_size]
@@ -30,42 +41,24 @@ class ForensicArtifactAgent(BaseAgent):
             if not existing_frames:
                 continue
 
-            prompt = f"""You are a forensic deepfake analyst performing DETAILED frame-by-frame analysis.
+            prompt_text = forensic_prompt.build_frame_prompt(
+                batch_start=i + 1,
+                batch_count=len(existing_frames),
+                file_type=file_type,
+            )
 
-Analyze frames {i + 1} to {i + len(existing_frames)} of a {file_type}.
-Frame paths: {existing_frames}
-
-For each frame, evaluate these forensic dimensions:
-1. FACIAL CONSISTENCY: Symmetry, proportions, skin texture quality, eye alignment
-2. LIGHTING ANALYSIS: Shadow direction consistency, specular highlights, color temperature
-3. EDGE ARTIFACTS: Blending boundaries, halo effects around face/hair, compression artifacts
-4. BACKGROUND COHERENCE: Warping, inconsistent perspective, blurred boundaries
-5. TEXTURE ANALYSIS: Repeating patterns, unnaturally smooth skin, pore-level detail
-6. TEMPORAL MARKERS: If multiple frames, note any sudden jumps in facial geometry
-
-Return JSON:
-{{
-    "frame_analyses": [
-        {{
-            "frame_index": 1,
-            "facial_consistency_score": 0-100,
-            "lighting_score": 0-100,
-            "edge_quality_score": 0-100,
-            "background_score": 0-100,
-            "texture_score": 0-100,
-            "anomalies_detected": ["anomaly description"],
-            "artifact_type": "none" | "gan_artifact" | "face_swap" | "lip_sync" | "full_synthetic"
-        }}
-    ],
-    "batch_summary": "Brief summary of this batch"
-}}"""
+            # Build multimodal content: prompt text + image parts
+            contents: list = [prompt_text]
+            for frame_path in existing_frames:
+                contents.append(_image_part(frame_path))
 
             try:
-                batch_result = self.generate_json(
-                    prompt,
-                    system_instruction="You are a forensic image analyst specializing in deepfake detection. Be thorough and precise.",
+                result = self.generate_multimodal_validated(
+                    contents,
+                    response_model=ForensicBatchResult,
+                    system_instruction=forensic_prompt.SYSTEM_INSTRUCTION,
                 )
-                frame_analyses.extend(batch_result.get("frame_analyses", []))
+                frame_analyses.extend([fa.model_dump() for fa in result.frame_analyses])
             except Exception as e:
                 logger.error(f"Frame batch analysis failed: {e}")
                 frame_analyses.append(
@@ -82,30 +75,15 @@ Return JSON:
         if not audio_path or not os.path.exists(audio_path):
             return {"status": "no_audio"}
 
-        prompt = """You are an audio forensics specialist. Analyze audio characteristics for deepfake indicators.
-
-Common audio deepfake artifacts include:
-1. Unnatural prosody or rhythm in speech
-2. Inconsistent background noise patterns
-3. Spectral gaps or unusual frequency distributions
-4. Phase discontinuities at edit points
-5. Lip-sync misalignment indicators
-
-Based on general audio deepfake knowledge, describe what to look for and provide a risk assessment.
-
-Return JSON:
-{
-    "audio_risk_level": "low" | "medium" | "high",
-    "audio_observations": ["observation"],
-    "lip_sync_risk": "low" | "medium" | "high",
-    "voice_clone_indicators": []
-}"""
+        prompt = forensic_prompt.build_audio_prompt()
 
         try:
-            return self.generate_json(
+            result = self.generate_validated(
                 prompt,
-                system_instruction="You are an audio forensics expert.",
+                response_model=AudioAnalysisResult,
+                system_instruction=forensic_prompt.AUDIO_SYSTEM_INSTRUCTION,
             )
+            return result.model_dump()
         except Exception as e:
             logger.error(f"Audio analysis failed: {e}")
             return {"status": "error", "error": str(e)}
@@ -182,6 +160,3 @@ Return JSON:
             "audio_analysis": audio_result,
             "frame_details": frame_result,
         }
-
-
-forensic_artifact_agent = ForensicArtifactAgent()

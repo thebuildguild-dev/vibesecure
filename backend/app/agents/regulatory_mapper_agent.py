@@ -194,6 +194,3 @@ Return JSON:
                 "error": str(e),
                 "overall_compliance_score": 0,
             }
-
-
-regulatory_mapper_agent = RegulatoryMapperAgent()

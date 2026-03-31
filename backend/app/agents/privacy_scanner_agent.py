@@ -47,7 +47,13 @@ class PrivacyScannerAgent(BaseAgent):
         consent_ids = ["cookie-consent", "gdpr-consent", "cookie-banner", "consent-banner"]
 
         for cls in consent_classes:
-            if soup.find(class_=lambda c: c and cls in c.lower() if isinstance(c, str) else False):
+            if soup.find(
+                class_=lambda c: (
+                    c and cls in (" ".join(c).lower() if isinstance(c, list) else c.lower())
+                    if c
+                    else False
+                )
+            ):
                 indicators["has_cookie_banner"] = True
                 indicators["consent_mechanisms"].append(f"CSS class containing '{cls}'")
 
@@ -201,6 +207,3 @@ Return JSON:
 
         results["status"] = "success"
         return results
-
-
-privacy_scanner_agent = PrivacyScannerAgent()
