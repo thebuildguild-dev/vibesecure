@@ -478,9 +478,7 @@ Format your response as JSON with this structure:
 
     for attempt in range(max_retries):
         try:
-            response = client.models.generate_content(
-                model="gemini-3-flash-preview", contents=prompt
-            )
+            response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
 
             response_text = response.text
 

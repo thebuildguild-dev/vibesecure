@@ -493,10 +493,10 @@ curl -X POST http://localhost:8000/api/governance \
 
 ## Agent Model Tiers
 
-| Tier      | Models (tried in order)                                                | Used by                                                                                                    |
-| --------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **BRAIN** | `gemini-3.1-pro-preview` then `gemini-2.5-pro` then `gemini-2.5-flash` | Supervisor, Forensic Artifact, Ensemble Voter, Threat Pattern, Predictive Risk, Auditor, Regulatory Mapper |
-| **AGENT** | `gemini-3-flash-preview` then `gemini-2.5-flash`                       | Keyframe Extractor, Deepfake Triage, Bias & Fairness, Privacy Scanner, Digital Asset Governance            |
+| Tier      | Models (tried in order)                         | Used by                                                                                                    |
+| --------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **BRAIN** | `gemini-2.5-pro` then `gemini-2.5-flash`        | Supervisor, Forensic Artifact, Ensemble Voter, Threat Pattern, Predictive Risk, Auditor, Regulatory Mapper |
+| **AGENT** | `gemini-2.5-flash` then `gemini-2.5-flash-lite` | Keyframe Extractor, Deepfake Triage, Bias & Fairness, Privacy Scanner, Digital Asset Governance            |
 
 Each agent tries models in order. If the first model fails or is rate-limited, it
 automatically falls back to the next one.

@@ -1,8 +1,8 @@
 """
 Gemini model client with automatic fallback chain.
 
-Brain agents (Supervisor): gemini-3.1-pro-preview -> gemini-2.5-pro -> gemini-2.5-flash
-Normal agents: gemini-3-flash-preview -> gemini-2.5-flash
+Brain agents (Supervisor): gemini-2.5-pro -> gemini-2.5-flash
+Normal agents: gemini-2.5-flash -> gemini-2.5-flash-lite
 """
 
 import json
@@ -18,14 +18,13 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 BRAIN_MODELS = [
-    # "gemini-3.1-pro-preview",
-    # "gemini-2.5-pro",
+    "gemini-2.5-pro",
     "gemini-2.5-flash",
 ]
 
 AGENT_MODELS = [
-    # "gemini-3-flash-preview",
     "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
 ]
 
 _TRANSIENT_KEYWORDS = frozenset(
