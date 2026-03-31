@@ -786,9 +786,41 @@ function PrivacyResults({ agentResults }) {
   );
 }
 
+const SCORECARD_DIMENSION_LABELS = {
+  transparency: "Transparency",
+  fairness: "Fairness",
+  accountability: "Accountability",
+  safety: "Safety",
+  privacy: "Privacy",
+  security: "Security",
+  robustness: "Robustness",
+  explainability: "Explainability",
+};
+
+const NIST_PILLAR_LABELS = {
+  govern: "Govern",
+  map: "Map",
+  measure: "Measure",
+  manage: "Manage",
+};
+
+const COMPLIANCE_COLORS = {
+  compliant: "var(--accent-verified)",
+  partial: "var(--accent-warning)",
+  non_compliant: "var(--accent-error)",
+  not_addressed: "var(--accent-error)",
+};
+
+const NIST_RATING_COLORS = {
+  addressed: "var(--accent-verified)",
+  partially_addressed: "var(--accent-warning)",
+  not_addressed: "var(--accent-error)",
+};
+
 function ResponsibleAIResults({ agentResults }) {
   const auditor = agentResults?.responsible_ai_auditor;
   const bias = agentResults?.bias_fairness;
+  const [traceOpen, setTraceOpen] = useState(false);
 
   if (!auditor && !bias) {
     return (
@@ -798,106 +830,275 @@ function ResponsibleAIResults({ agentResults }) {
     );
   }
 
-  const allRecs = [
-    ...(auditor?.recommendations || []),
-    ...(bias?.recommendations || []),
-  ].slice(0, 5);
+  const scorecard = auditor?.scorecard || {};
+  const nist = auditor?.nist_assessment || {};
+  const saif = auditor?.saif_assessment || [];
+  const topRecs =
+    auditor?.top_recommendations || auditor?.recommendations || [];
+  const reasoningTrace = auditor?.reasoning_trace;
+  const summary =
+    auditor?.plain_english_summary ||
+    auditor?.summary ||
+    auditor?.executive_summary;
+  const grade = auditor?.overall_grade;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Score + Grade row */}
       {auditor?.overall_score != null && (
         <div className="p-4 rounded-lg bg-[var(--bg-tertiary)] border border-slate-700">
-          <div className="text-xs font-mono text-[var(--text-tertiary)] mb-2 tracking-wider">
-            AI ETHICS SCORE
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-mono text-[var(--text-tertiary)] tracking-wider uppercase">
+              AI Ethics Score
+            </div>
+            {grade && (
+              <span
+                className="font-mono text-xl font-bold px-3 py-0.5 rounded"
+                style={{
+                  color:
+                    grade === "A"
+                      ? "var(--accent-verified)"
+                      : grade === "B" || grade === "C"
+                        ? "var(--accent-warning)"
+                        : "var(--accent-error)",
+                  backgroundColor:
+                    grade === "A"
+                      ? "rgba(var(--accent-verified-rgb,34,197,94),0.1)"
+                      : grade === "B" || grade === "C"
+                        ? "rgba(var(--accent-warning-rgb,234,179,8),0.1)"
+                        : "rgba(var(--accent-error-rgb,239,68,68),0.1)",
+                }}
+              >
+                {grade}
+              </span>
+            )}
           </div>
           <ScoreBar score={auditor.overall_score} />
         </div>
       )}
 
-      {(auditor?.summary || auditor?.executive_summary) && (
+      {/* Plain-English Summary */}
+      {summary && (
         <div className="p-4 rounded-lg bg-[var(--bg-tertiary)] border border-slate-700">
           <div className="text-xs font-mono text-[var(--text-tertiary)] uppercase mb-2 tracking-wider">
             Audit Summary
           </div>
-          <p className="text-sm text-[var(--text-secondary)]">
-            {auditor.summary || auditor.executive_summary}
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            {summary}
           </p>
         </div>
       )}
 
+      {/* Scorecard dimensions */}
+      {Object.keys(scorecard).length > 0 && (
+        <div>
+          <h4 className="text-xs font-mono text-[var(--text-tertiary)] uppercase mb-3 tracking-wider">
+            Ethics Scorecard ({Object.keys(scorecard).length} dimensions)
+          </h4>
+          <div className="space-y-3">
+            {Object.entries(scorecard).map(([dim, data]) => {
+              const label =
+                SCORECARD_DIMENSION_LABELS[dim] ||
+                dim.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+              const score = data?.score;
+              const findings = data?.findings;
+              const recs = data?.recommendations || [];
+              return (
+                <div
+                  key={dim}
+                  className="rounded-lg bg-[var(--bg-tertiary)] border border-slate-700 overflow-hidden"
+                >
+                  <div className="px-4 py-3 flex items-center gap-4">
+                    <div className="w-28 shrink-0 text-sm font-mono font-semibold text-[var(--text-primary)]">
+                      {label}
+                    </div>
+                    {score != null ? (
+                      <div className="flex-1">
+                        <ScoreBar score={score} />
+                      </div>
+                    ) : (
+                      <div className="flex-1" />
+                    )}
+                  </div>
+                  {findings && (
+                    <div className="px-4 pb-3 text-xs text-[var(--text-secondary)] leading-relaxed border-t border-slate-700 pt-2">
+                      {findings}
+                    </div>
+                  )}
+                  {recs.length > 0 && (
+                    <div className="px-4 pb-3 space-y-1">
+                      {recs.map((r, i) => (
+                        <div
+                          key={i}
+                          className="text-xs text-[var(--text-tertiary)] flex items-start gap-1.5"
+                        >
+                          <span className="text-[var(--accent-info)] mt-0.5 shrink-0">
+                            ›
+                          </span>
+                          {r}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Bias findings */}
       {bias?.bias_findings?.length > 0 && (
         <div>
           <h4 className="text-xs font-mono text-[var(--text-tertiary)] uppercase mb-2 tracking-wider">
-            Bias Findings ({bias.bias_findings.length})
+            Bias Findings
+            {bias.bias_score != null && (
+              <span className="ml-2 text-[var(--accent-error)]">
+                — Bias Score {bias.bias_score}/100
+              </span>
+            )}
           </h4>
           <div className="space-y-2">
-            {bias.bias_findings.slice(0, 5).map((f, i) => (
+            {bias.bias_findings.map((f, i) => (
               <div
                 key={i}
-                className="p-3 rounded-lg bg-[var(--bg-tertiary)] border border-slate-700 text-sm text-[var(--text-secondary)]"
+                className="p-3 rounded-lg bg-[var(--bg-tertiary)] border border-slate-700 text-sm text-[var(--text-secondary)] flex items-start gap-2"
               >
+                <span className="text-[var(--accent-error)] shrink-0 mt-0.5">
+                  ⚠
+                </span>
                 {typeof f === "string"
                   ? f
                   : f.description || f.finding || JSON.stringify(f)}
               </div>
             ))}
           </div>
+          {bias.affected_groups?.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {bias.affected_groups.map((g, i) => (
+                <span
+                  key={i}
+                  className="text-xs font-mono px-2 py-0.5 rounded-full border"
+                  style={{
+                    color: "var(--accent-error)",
+                    borderColor: "rgba(239,68,68,0.4)",
+                    backgroundColor: "rgba(239,68,68,0.08)",
+                  }}
+                >
+                  {g}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Render all non-standard fields from auditor */}
-      {auditor &&
-        Object.entries(auditor)
-          .filter(
-            ([k]) =>
-              ![
-                "overall_score",
-                "summary",
-                "executive_summary",
-                "recommendations",
-              ].includes(k),
-          )
-          .map(([k, v]) => {
-            if (!v || (Array.isArray(v) && v.length === 0)) return null;
-            return (
-              <div
-                key={k}
-                className="p-3 rounded-lg bg-[var(--bg-tertiary)] border border-slate-700"
-              >
-                <div className="text-xs font-mono text-[var(--text-tertiary)] uppercase mb-1 tracking-wider">
-                  {k.replace(/_/g, " ")}
+      {/* NIST AI RMF Assessment */}
+      {Object.keys(nist).length > 0 && (
+        <div>
+          <h4 className="text-xs font-mono text-[var(--text-tertiary)] uppercase mb-3 tracking-wider">
+            NIST AI Risk Management Framework
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {Object.entries(nist).map(([pillar, data]) => {
+              const label =
+                NIST_PILLAR_LABELS[pillar] ||
+                pillar
+                  .replace(/_/g, " ")
+                  .replace(/\b\w/g, (c) => c.toUpperCase());
+              const rating = data?.rating || data?.status || "";
+              const notes =
+                data?.notes || (typeof data === "string" ? data : "");
+              const ratingColor =
+                NIST_RATING_COLORS[rating] || "var(--text-tertiary)";
+              return (
+                <div
+                  key={pillar}
+                  className="p-3 rounded-lg bg-[var(--bg-tertiary)] border border-slate-700"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-mono font-semibold text-[var(--text-primary)]">
+                      {label}
+                    </span>
+                    <span
+                      className="text-xs font-mono px-2 py-0.5 rounded-full border"
+                      style={{
+                        color: ratingColor,
+                        borderColor: `${ratingColor}50`,
+                        backgroundColor: `${ratingColor}15`,
+                      }}
+                    >
+                      {rating.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  {notes && (
+                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed mt-1">
+                      {notes}
+                    </p>
+                  )}
                 </div>
-                <div className="text-sm text-[var(--text-secondary)]">
-                  {typeof v === "string"
-                    ? v
-                    : typeof v === "number"
-                      ? String(v)
-                      : Array.isArray(v)
-                        ? v.slice(0, 3).map((item, i) => (
-                            <div key={i} className="mb-1">
-                              {typeof item === "string"
-                                ? item
-                                : JSON.stringify(item)}
-                            </div>
-                          ))
-                        : JSON.stringify(v)}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      {allRecs.length > 0 && (
+      {/* SAIF Assessment */}
+      {saif.length > 0 && (
+        <div>
+          <h4 className="text-xs font-mono text-[var(--text-tertiary)] uppercase mb-3 tracking-wider">
+            Google SAIF Compliance
+          </h4>
+          <div className="space-y-2">
+            {saif.map((item, i) => {
+              const compliance = item?.compliance || "";
+              const compColor =
+                COMPLIANCE_COLORS[compliance] || "var(--text-tertiary)";
+              return (
+                <div
+                  key={i}
+                  className="p-3 rounded-lg bg-[var(--bg-tertiary)] border border-slate-700"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-1">
+                    <span className="text-xs text-[var(--text-primary)] leading-snug">
+                      {item.principle}
+                    </span>
+                    <span
+                      className="text-xs font-mono px-2 py-0.5 rounded-full border shrink-0"
+                      style={{
+                        color: compColor,
+                        borderColor: `${compColor}50`,
+                        backgroundColor: `${compColor}15`,
+                      }}
+                    >
+                      {compliance.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  {item.notes && (
+                    <p className="text-xs text-[var(--text-tertiary)] leading-relaxed">
+                      {item.notes}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Top Recommendations */}
+      {topRecs.length > 0 && (
         <div>
           <h4 className="text-xs font-mono text-[var(--text-tertiary)] uppercase mb-2 tracking-wider">
-            Recommendations
+            Top Recommendations
           </h4>
           <div className="space-y-1">
-            {allRecs.map((rec, i) => (
+            {topRecs.slice(0, 5).map((rec, i) => (
               <div
                 key={i}
                 className="text-sm text-[var(--text-secondary)] flex items-start gap-2 p-2 rounded bg-[var(--bg-tertiary)]"
               >
-                <span className="text-[var(--accent-info)] font-mono text-xs mt-0.5 flex-shrink-0">
+                <span className="text-[var(--accent-info)] font-mono text-xs mt-0.5 shrink-0">
                   {i + 1}.
                 </span>
                 {typeof rec === "string"
@@ -906,6 +1107,30 @@ function ResponsibleAIResults({ agentResults }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Reasoning Trace (collapsible) */}
+      {reasoningTrace && (
+        <div className="rounded-lg border border-slate-700 overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between px-4 py-2 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-elevated)] transition-colors text-left"
+            onClick={() => setTraceOpen((o) => !o)}
+          >
+            <span className="text-xs font-mono text-[var(--text-tertiary)] uppercase tracking-wider">
+              Agent Reasoning Trace
+            </span>
+            {traceOpen ? (
+              <ChevronUp className="w-4 h-4 text-[var(--text-tertiary)]" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-[var(--text-tertiary)]" />
+            )}
+          </button>
+          {traceOpen && (
+            <pre className="px-4 py-3 text-xs font-mono text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed bg-[var(--bg-primary)]">
+              {reasoningTrace}
+            </pre>
+          )}
         </div>
       )}
     </div>
