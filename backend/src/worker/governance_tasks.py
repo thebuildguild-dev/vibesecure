@@ -1,5 +1,5 @@
 """
-Celery tasks for running the V2 agent swarm.
+Celery tasks for running the agent swarm.
 """
 
 import logging

@@ -1,4 +1,4 @@
-# VibeSecure V2
+# VibeSecure
 
 **Team:** The Build Guild
 
@@ -8,12 +8,13 @@
 - [Zulekha Aalmi](https://github.com/Zulekha01)
 - [Shakshi Kotwala](https://github.com/Shakshi-Kotwala)
 - Kartavya Kumar
+- Karman Singh Chandok
 
 **[Watch Demo Video](https://youtu.be/40hJxE1rz_k)**
 
 ---
 
-## About VibeSecure V2
+## About VibeSecure
 
 VibeSecure is a **complete AI-native governance platform** that helps individuals, creators, developers, businesses, governments, and enterprises safely manage AI-generated content, websites, and custom AI systems.
 
@@ -36,6 +37,7 @@ Everything runs **locally** in Docker -- your data never leaves your machine.
 ## How Every Feature Works
 
 ### 1. Deepfake Detection Service
+
 - User uploads a **photo** or **short video** (up to 5 minutes).
 - **Keyframe Extractor Agent** (CPU-only, FFmpeg) intelligently picks 8-15 representative frames.
 - **Deepfake Triage Agent** does a fast first-pass check with Gemini Flash.
@@ -44,6 +46,7 @@ Everything runs **locally** in Docker -- your data never leaves your machine.
 - Output: Confidence score, visual heatmap overlay, plain-English explanation, and dataset match notes.
 
 ### 2. AI Threat Intelligence Service (Including Custom AI System Testing)
+
 - **For uploaded content**: Scans for hidden adversarial patterns, suspicious text, or API behavior.
 - **Testing your own AI system**:
   - User provides their own AI system's **API endpoint** plus authentication.
@@ -52,17 +55,20 @@ Everything runs **locally** in Docker -- your data never leaves your machine.
   - Report shows exact successful attacks, risk score, and ready-to-apply fixes.
 
 ### 3. Responsible AI Frameworks Service
+
 - User uploads AI-generated content or describes their AI system.
 - **Responsible AI Auditor Agent** and **Bias and Fairness Agent** evaluate against NIST AI Risk Management Framework and Google Secure AI Framework (SAIF).
 - Produces a **simple scorecard** (Transparency, Fairness, Accountability, Safety, etc.).
 - Gives plain-English suggestions with full reasoning trace for developers.
 
 ### 4. Data Privacy and Regulatory Compliance Service
+
 - **Privacy Scanner Agent** detects PII, missing or weak consent banners, and privacy policy gaps.
 - **Regulatory Mapper Agent** maps findings to exact articles of GDPR, CCPA, DPDP Act (India), and EU AI Act.
 - Generates professional **compliance reports** (JSON).
 
 ### 5. Digital Asset Governance Service (Owner-based Website Security Scanning)
+
 - **Mandatory ownership verification**: User places a token on their domain.
 - After verification, runs full checks (security headers, TLS, CORS, cookies, exposed endpoints, vulnerable libraries).
 - Can use Playwright for JavaScript rendering and OWASP ZAP for active testing (with consent).
@@ -88,20 +94,20 @@ Everything runs **locally** in Docker -- your data never leaves your machine.
 
 The system is built on a **LangGraph state machine** where a Supervisor Agent orchestrates 11 domain-specific agents:
 
-| Agent | Service | Model Tier | Role |
-|-------|---------|------------|------|
-| **Supervisor** | All | Brain (Gemini 3.1 Pro Preview) | Orchestration, planning, synthesis |
-| **Keyframe Extractor** | Deepfake | CPU-only (FFmpeg) | Extract frames from video/images |
-| **Deepfake Triage** | Deepfake | Agent (Gemini Flash) | Fast first-pass deepfake check |
-| **Forensic Artifact** | Deepfake | Agent (Gemini Flash) | Frame-by-frame forensic analysis |
-| **Ensemble Voter** | Deepfake | Agent (Gemini Flash) | Majority vote + RAG knowledge base |
-| **Threat Pattern** | Threat Intel | Agent (Gemini Flash) | MITRE ATLAS + safe AI system testing |
-| **Predictive Risk** | Threat Intel | Agent (Gemini Flash) | Attack forecasting and risk prediction |
-| **Responsible AI Auditor** | Responsible AI | Agent (Gemini Flash) | NIST AI RMF + Google SAIF evaluation |
-| **Bias and Fairness** | Responsible AI | Agent (Gemini Flash) | Bias detection across 8 dimensions |
-| **Privacy Scanner** | Privacy | Agent (Gemini Flash) | PII + consent banner + policy analysis |
-| **Regulatory Mapper** | Privacy | Agent (Gemini Flash) | GDPR/CCPA/DPDP/EU AI Act mapping |
-| **Digital Asset Governance** | Digital Asset | Agent (Gemini Flash) | Owner-verified website scanning |
+| Agent                        | Service        | Model Tier                     | Role                                   |
+| ---------------------------- | -------------- | ------------------------------ | -------------------------------------- |
+| **Supervisor**               | All            | Brain (Gemini 3.1 Pro Preview) | Orchestration, planning, synthesis     |
+| **Keyframe Extractor**       | Deepfake       | CPU-only (FFmpeg)              | Extract frames from video/images       |
+| **Deepfake Triage**          | Deepfake       | Agent (Gemini Flash)           | Fast first-pass deepfake check         |
+| **Forensic Artifact**        | Deepfake       | Agent (Gemini Flash)           | Frame-by-frame forensic analysis       |
+| **Ensemble Voter**           | Deepfake       | Agent (Gemini Flash)           | Majority vote + RAG knowledge base     |
+| **Threat Pattern**           | Threat Intel   | Agent (Gemini Flash)           | MITRE ATLAS + safe AI system testing   |
+| **Predictive Risk**          | Threat Intel   | Agent (Gemini Flash)           | Attack forecasting and risk prediction |
+| **Responsible AI Auditor**   | Responsible AI | Agent (Gemini Flash)           | NIST AI RMF + Google SAIF evaluation   |
+| **Bias and Fairness**        | Responsible AI | Agent (Gemini Flash)           | Bias detection across 8 dimensions     |
+| **Privacy Scanner**          | Privacy        | Agent (Gemini Flash)           | PII + consent banner + policy analysis |
+| **Regulatory Mapper**        | Privacy        | Agent (Gemini Flash)           | GDPR/CCPA/DPDP/EU AI Act mapping       |
+| **Digital Asset Governance** | Digital Asset  | Agent (Gemini Flash)           | Owner-verified website scanning        |
 
 ### Model Fallback Strategy
 
@@ -110,27 +116,17 @@ The system is built on a **LangGraph state machine** where a Supervisor Agent or
 - Automatic retry with exponential backoff on transient errors (rate limits, 429, 503)
 
 ### Agent Collaboration
+
 - Agents communicate via **Redis Streams** for real-time event publishing
 - **Shared LangGraph state** passes results between agents
 - Cross-service collaboration: Deepfake agents pass findings to Threat Pattern Agent; Privacy Scanner feeds into Regulatory Mapper; Digital Asset results can trigger Privacy Scanner
 
-
 ## How It Works
-
-### V2 Governance Flow
 
 1. **Submit a Governance Job**: Provide a URL, upload media (image/video), or describe your AI system
 2. **Supervisor Plans**: The brain agent analyzes your input and selects which agents to run
 3. **Agent Swarm Executes**: Selected agents run in parallel within their service groups, passing results downstream
 4. **Governance Bundle**: The Supervisor synthesizes all findings into a unified governance report with scores, risks, and recommendations
-
-### V1 Security Scan Flow (Preserved)
-
-1. **Provide Your URL**: Submit your website URL for security analysis
-2. **Verify Ownership**: Place a verification token on your domain (like Google Search Console)
-3. **9 Parallel Checks**: Headers, HTTPS, TLS, CORS, libraries, directories, endpoints, reflections, content
-4. **AI Analysis**: Google Gemini synthesizes findings into actionable guidance
-5. **Get Results**: View detailed findings, severity ratings, and copy-paste fix configs
 
 ### Safe-by-Default
 
@@ -141,8 +137,6 @@ The system is built on a **LangGraph state machine** where a Supervisor Agent or
 - Media uploads are validated and size-limited (100 MB max)
 
 ## 🏗️ System Architecture
-
-### V2 Agent Swarm Architecture
 
 ```mermaid
 flowchart TB
@@ -213,36 +207,7 @@ flowchart TB
     style Redis fill:#ef4444,color:#fff
 ```
 
-### V1 System Architecture (Preserved)
-
-```mermaid
-flowchart LR
-    User[User] --> Frontend[React Frontend]
-    Frontend -->|JWT Auth| API[FastAPI]
-
-    API --> Firebase[Firebase]
-    API --> DB[(PostgreSQL)]
-    API --> Cache[(Redis)]
-
-    Cache -->|Queue Tasks| Worker[Celery Workers]
-
-    Worker --> Scanners[Security Scanners]
-    Worker --> Playwright[JS Renderer]
-    Worker --> ZAP[OWASP ZAP]
-
-    Worker --> AI[Gemini AI]
-    Worker --> Email[Resend API]
-
-    Worker --> DB
-    Email --> User
-
-    style API fill:#4f46e5
-    style Worker fill:#dc2626
-    style DB fill:#2563eb
-    style Cache fill:#ef4444
-```
-
-### Process Flow (V2 Governance)
+### Process Flow
 
 ```mermaid
 sequenceDiagram
@@ -296,14 +261,14 @@ sequenceDiagram
 
 ## Google Technologies Used
 
-| Technology | Usage | Impact |
-| :---- | :---- | :---- |
-| **Gemini 3.1 Pro Preview** | Brain-tier agent (Supervisor) planning and synthesis | Most capable reasoning for orchestration decisions |
-| **Gemini 2.5 Pro** | Brain-tier fallback | Reliable fallback for complex reasoning tasks |
-| **Gemini 3 Flash Preview** | Normal agent analysis (deepfake, threat, audit, privacy) | Fast, cost-effective agent execution |
-| **Gemini 2.5 Flash** | Universal fallback for all agent tiers | Ensures no agent ever fails due to model unavailability |
-| **Firebase Auth** | User authentication via Google OAuth and Email | Secure, zero-config identity management |
-| **Firebase Admin SDK** | Backend JWT verification, user management | Stateless, scalable auth middleware |
+| Technology                 | Usage                                                    | Impact                                                  |
+| :------------------------- | :------------------------------------------------------- | :------------------------------------------------------ |
+| **Gemini 3.1 Pro Preview** | Brain-tier agent (Supervisor) planning and synthesis     | Most capable reasoning for orchestration decisions      |
+| **Gemini 2.5 Pro**         | Brain-tier fallback                                      | Reliable fallback for complex reasoning tasks           |
+| **Gemini 3 Flash Preview** | Normal agent analysis (deepfake, threat, audit, privacy) | Fast, cost-effective agent execution                    |
+| **Gemini 2.5 Flash**       | Universal fallback for all agent tiers                   | Ensures no agent ever fails due to model unavailability |
+| **Firebase Auth**          | User authentication via Google OAuth and Email           | Secure, zero-config identity management                 |
+| **Firebase Admin SDK**     | Backend JWT verification, user management                | Stateless, scalable auth middleware                     |
 
 ## 🛠️ Tech Stack
 
@@ -413,7 +378,7 @@ sequenceDiagram
 
 All authenticated endpoints require a Firebase JWT token in the `Authorization` header: `Bearer <token>`.
 
-### Governance (V2)
+### Governance
 
 #### POST /api/governance
 
@@ -438,6 +403,7 @@ Create a new governance job.
 Create a governance job with file upload (multipart form).
 
 **Form fields:**
+
 - `file` (required): Image (JPEG, PNG, WebP, GIF) or video (MP4, WebM, MOV, AVI), max 100 MB
 - `service_type` (required): One of the five service types
 - `description` (optional): Additional context
@@ -447,6 +413,7 @@ Create a governance job with file upload (multipart form).
 List all governance jobs for the authenticated user.
 
 **Query Parameters:**
+
 - `skip` (int): Offset. Default: `0`
 - `limit` (int): Results per page (1-100). Default: `20`
 
@@ -459,6 +426,7 @@ Get full details of a governance job including agent results.
 Get real-time agent events from Redis Streams.
 
 **Query Parameters:**
+
 - `last_id` (string): Stream ID to read from. Default: `0-0`
 
 **Response:**
@@ -542,7 +510,7 @@ Check active scan consent status.
 
 List all active scan consents.
 
-### Scans (V1)
+### Scans
 
 #### POST /api/scans
 

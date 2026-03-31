@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="VibeSecure V2 API",
+    title="VibeSecure API",
     description="AI-native governance platform with 11-agent swarm",
     lifespan=lifespan,
     docs_url="/docs",
@@ -43,4 +43,4 @@ app.include_router(governance_router, prefix="/api")
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "app": "VibeSecure V2 API", "version": "2.0.0"}
+    return {"status": "ok", "app": "VibeSecure API", "version": "2.0.0"}

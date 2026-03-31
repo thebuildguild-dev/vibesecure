@@ -285,7 +285,7 @@ class ScanExport(SQLModel):
     format: str = "json"
 
 
-# ─── V2: Agent Swarm Models ─────────────────────────────────────
+# ─── Agent Swarm Models ─────────────────────────────────────
 
 
 class JobStatus(str, Enum):

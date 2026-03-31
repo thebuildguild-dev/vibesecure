@@ -1,6 +1,6 @@
 """
 Digital Asset Governance Agent - Owner-verified website security scanning.
-Integrates with the existing V1 scanning infrastructure (Playwright + ZAP + all checkers).
+Integrates with the scanning infrastructure (Playwright + ZAP + all checkers).
 Can trigger Privacy Scanner and Regulatory Mapper for cross-service collaboration.
 """
 
@@ -66,7 +66,7 @@ class DigitalAssetGovernanceAgent(BaseAgent):
             return consent is not None
 
     def _run_security_checks(self, url: str, options: dict) -> dict:
-        """Run all V1 security checkers against the URL."""
+        """Run all security checkers against the URL."""
         from src.worker.checks.cors_checker import check_cors
         from src.worker.checks.directory_checker import check_directory_listing
         from src.worker.checks.endpoint_checker import check_endpoints

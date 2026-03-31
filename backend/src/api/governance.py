@@ -1,5 +1,5 @@
 """
-Governance API - endpoints for the V2 agent swarm system.
+Governance API - endpoints for the agent swarm system.
 Handles job creation, status tracking, file uploads, and result retrieval.
 """
 
