@@ -7,12 +7,53 @@ import httpx
 from sqlmodel import Session, select
 
 from app.core.config import settings
+from app.models.consent import Consent
 from app.models.domain import DomainVerification, DomainVerificationAudit
 from app.utils.domain import handle_localhost
 from app.utils.errors import rate_limit_error
 from app.utils.http_client import HTTPClientFactory
 
 logger = logging.getLogger(__name__)
+
+
+# ── Shared lookup helpers (used by agents and Celery tasks) ──────
+
+
+def is_domain_verified(session: Session, domain: str, user_email: str) -> dict:
+    """Check whether *domain* has a current, non-expired verification for *user_email*.
+
+    Returns a dict with at least ``{"verified": bool}``.
+    When verified, also includes ``verification_id``, ``domain``, and ``method``.
+    """
+    now = datetime.now(UTC)
+    verification = session.exec(
+        select(DomainVerification)
+        .where(DomainVerification.domain == domain)
+        .where(DomainVerification.user_email == user_email)
+        .where(DomainVerification.verified == True)  # noqa: E712
+        .where(DomainVerification.token_expires_at > now)
+    ).first()
+
+    if not verification:
+        return {"verified": False, "reason": "Domain not verified or verification expired"}
+
+    return {
+        "verified": True,
+        "verification_id": verification.id,
+        "domain": verification.domain,
+        "method": verification.verified_by_method,
+    }
+
+
+def has_active_consent(session: Session, domain: str, user_email: str) -> bool:
+    """Return ``True`` when the user has granted active-scan consent for *domain*."""
+    consent = session.exec(
+        select(Consent)
+        .where(Consent.domain == domain)
+        .where(Consent.user_email == user_email)
+        .where(Consent.active_allowed == True)  # noqa: E712
+    ).first()
+    return consent is not None
 
 
 def generate_token() -> str:
