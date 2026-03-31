@@ -88,33 +88,44 @@ class EnsembleVoterAgent(BaseAgent):
                 }
             )
 
-        # Ensemble decision
+        # Ensemble decision — confidence-weighted voting
+        # Each vote's confidence acts as its weight, so a high-confidence
+        # triage verdict outweighs a lower-confidence forensic disagreement.
         verdict_counts = {"likely_real": 0, "likely_fake": 0, "suspicious": 0}
-        total_confidence = 0
+        weighted_scores = {"likely_real": 0, "likely_fake": 0, "suspicious": 0}
         for vote in votes:
             v = vote["verdict"]
             if v in verdict_counts:
                 verdict_counts[v] += 1
-                total_confidence += vote["confidence"]
+                weighted_scores[v] += vote["confidence"]
 
         if not votes:
             final_verdict = "inconclusive"
             final_confidence = 0
         else:
-            avg_confidence = total_confidence / len(votes)
-            # Majority vote
-            max_votes = max(verdict_counts.values())
-            winners = [k for k, v in verdict_counts.items() if v == max_votes]
+            max_weight = max(weighted_scores.values())
+            winners = [k for k, w in weighted_scores.items() if w == max_weight]
 
             if len(winners) == 1:
                 final_verdict = winners[0]
+            elif "likely_real" in winners and "likely_fake" in winners:
+                # Genuine disagreement between real and fake — be cautious
+                final_verdict = "suspicious"
+            elif "suspicious" in winners:
+                final_verdict = "suspicious"
             else:
-                # Tie-breaking: prefer "suspicious" for safety
-                final_verdict = "suspicious" if "suspicious" in winners else winners[0]
+                final_verdict = winners[0]
 
-            # Adjust confidence based on agreement
-            agreement_ratio = max_votes / len(votes)
-            final_confidence = int(avg_confidence * agreement_ratio)
+            # Calculate confidence from agreeing votes
+            agreeing = [v for v in votes if v["verdict"] == final_verdict]
+            if agreeing:
+                avg_agreeing = sum(v["confidence"] for v in agreeing) / len(agreeing)
+                agreement_ratio = len(agreeing) / len(votes)
+                final_confidence = min(100, int(avg_agreeing * (0.5 + 0.5 * agreement_ratio)))
+            else:
+                # "suspicious" from disagreement — moderate confidence
+                avg_all = sum(v["confidence"] for v in votes) / len(votes)
+                final_confidence = min(60, int(avg_all * 0.5))
 
         # RAG knowledge base similarity check
         # Query deepfake knowledge base for similar cases
@@ -192,7 +203,7 @@ Return JSON:
         return {
             "status": "success",
             "final_verdict": final_verdict,
-            "confidence_score": final_confidence,
+            "confidence_score": min(100, max(0, final_confidence)),
             "real_percentage": real_pct,
             "fake_percentage": 100 - real_pct,
             "votes": votes,

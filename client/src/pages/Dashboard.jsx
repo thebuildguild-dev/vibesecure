@@ -684,7 +684,12 @@ export default function Dashboard() {
                           </span>
                         </div>
                         <div className="text-xs text-[var(--text-tertiary)] font-mono">
-                          {new Date(job.created_at).toLocaleString()}
+                          {new Date(
+                            job.created_at.endsWith("Z") ||
+                              job.created_at.includes("+")
+                              ? job.created_at
+                              : job.created_at + "Z",
+                          ).toLocaleString()}
                           {job.agents_completed?.length > 0 && (
                             <span className="ml-3">
                               {job.agents_completed.length} agent
