@@ -8,6 +8,12 @@ from datetime import UTC, datetime
 from celery import Task
 from sqlmodel import Session, create_engine
 
+from app.core.events import (
+    GovernanceJobCompletedEvent,
+    GovernanceJobFailedEvent,
+    event_bus,
+)
+from app.core.metrics import metrics
 from app.models.audit import GovernanceJob, JobStatus
 from app.worker.celery_app import DATABASE_URL, celery_app
 
@@ -56,6 +62,7 @@ class GovernanceTask(Task):
 def process_governance_job(self, job_id: str):
     """Run the agent swarm for a governance job."""
     logger.info(f"[Job {job_id}] Starting governance job")
+    metrics.jobs_created.inc()
 
     # Load job from database
     with Session(worker_engine) as session:
@@ -125,6 +132,30 @@ def process_governance_job(self, job_id: str):
 
         logger.info(f"[Job {job_id}] Completed: {len(completed_agents)} agents, status={status}")
 
+        # Emit domain event for event bus subscribers (webhooks, audit, etc.)
+        if status == "completed":
+            metrics.jobs_completed.inc()
+            event_bus.emit_sync(
+                GovernanceJobCompletedEvent(
+                    source="governance_task",
+                    data={
+                        "job_id": job_id,
+                        "user_email": user_email,
+                        "service_type": service_type,
+                        "agents_completed": len(completed_agents),
+                        "overall_risk": governance_bundle.get("overall_risk_level", "unknown"),
+                    },
+                )
+            )
+        else:
+            metrics.jobs_failed.inc()
+            event_bus.emit_sync(
+                GovernanceJobFailedEvent(
+                    source="governance_task",
+                    data={"job_id": job_id, "user_email": user_email, "error": error},
+                )
+            )
+
         return {
             "job_id": job_id,
             "status": status,
@@ -133,11 +164,18 @@ def process_governance_job(self, job_id: str):
 
     except Exception as exc:
         logger.exception(f"[Job {job_id}] Swarm execution failed: {exc}")
+        metrics.jobs_failed.inc()
         _update_job(
             job_id,
             status=JobStatus.failed,
             error=str(exc),
             finished_at=datetime.now(UTC),
+        )
+        event_bus.emit_sync(
+            GovernanceJobFailedEvent(
+                source="governance_task",
+                data={"job_id": job_id, "user_email": user_email, "error": str(exc)},
+            )
         )
 
         if self.request.retries < self.max_retries:

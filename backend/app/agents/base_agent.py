@@ -3,9 +3,16 @@ Base agent class for all swarm agents.
 
 Returns partial state deltas so LangGraph reducers (merge_dicts for results,
 operator.add for messages and completed_agents) handle merging correctly.
+
+Features:
+  - Automatic retry with exponential backoff for transient failures
+  - Circuit breaker integration (Gemini calls route through the breaker)
+  - Metrics recording for execution duration and success/failure
+  - Event bus emission for agent lifecycle events
 """
 
 import logging
+import random
 import time
 import traceback
 
@@ -13,6 +20,14 @@ from pydantic import BaseModel, ValidationError
 
 from app.agents.errors import AgentExecutionError
 from app.agents.messaging import publish_agent_complete, publish_agent_error, publish_agent_start
+from app.core.circuit_breaker import CircuitOpenError, gemini_breaker
+from app.core.events import (
+    AgentCompletedEvent,
+    AgentFailedEvent,
+    AgentStartedEvent,
+    event_bus,
+)
+from app.core.metrics import metrics
 from app.graphs.state import AgentState
 from app.tools.gemini_tools import (
     agent_generate,
@@ -27,18 +42,44 @@ logger = logging.getLogger(__name__)
 
 _VALIDATED_MAX_RETRIES = 2
 
+# Retry settings for the run() lifecycle
+_RUN_MAX_RETRIES = 2
+_RUN_BASE_DELAY = 1.5  # seconds
+_RUN_MAX_DELAY = 15.0
+
+_TRANSIENT_ERRORS = (
+    ConnectionError,
+    TimeoutError,
+    OSError,
+    CircuitOpenError,
+)
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """Determine if an exception warrants a retry."""
+    if isinstance(exc, _TRANSIENT_ERRORS):
+        return True
+    msg = str(exc).lower()
+    return any(kw in msg for kw in ("rate limit", "429", "503", "timeout", "overloaded"))
+
 
 class BaseAgent:
-    """Base class for all agents in the swarm."""
+    """Base class for all agents in the swarm.
+
+    Subclasses implement ``process()`` and return a dict of results.
+    The ``run()`` wrapper handles retries, circuit breakers, metrics,
+    event publishing, and error packaging.
+    """
 
     name: str = "base_agent"
     description: str = "Base agent"
     is_brain: bool = False  # If True, uses brain-tier models
+    max_retries: int = _RUN_MAX_RETRIES
 
     def __init__(self):
         self.logger = logging.getLogger(f"agent.{self.name}")
 
-    # ── Text generation ──────────────────────────────────────────
+    # ── Text generation (circuit breaker protected) ────────────
 
     def generate(
         self,
@@ -46,10 +87,14 @@ class BaseAgent:
         system_instruction: str | None = None,
         response_mime_type: str | None = None,
     ) -> str:
-        """Generate text using the appropriate model tier."""
-        if self.is_brain:
-            return brain_generate(prompt, system_instruction, response_mime_type)
-        return agent_generate(prompt, system_instruction, response_mime_type)
+        """Generate text using the appropriate model tier, routed through the circuit breaker."""
+
+        def _call():
+            if self.is_brain:
+                return brain_generate(prompt, system_instruction, response_mime_type)
+            return agent_generate(prompt, system_instruction, response_mime_type)
+
+        return gemini_breaker.call(_call)
 
     def generate_json(
         self,
@@ -183,65 +228,134 @@ class BaseAgent:
 
     def run(self, state: AgentState) -> dict:
         """
-        Execute the agent with event publishing and error handling.
+        Execute the agent with retry, circuit breaker awareness, metrics,
+        event publishing, and error handling.
+
+        Transient failures (network, rate limits, circuit open) are retried
+        with exponential backoff + jitter.  Non-retryable errors fail
+        immediately.
 
         Returns a **partial state delta** -- only the keys that changed.
         LangGraph applies the Annotated reducers (merge_dicts for results,
         operator.add for completed_agents and messages) automatically.
         """
         job_id = state.get("job_id", "unknown")
-        self.logger.info(f"[{job_id}] Agent {self.name} starting")
+        self.logger.info("[%s] Agent %s starting", job_id, self.name)
 
         publish_agent_start(job_id, self.name)
+        event_bus.emit_sync(
+            AgentStartedEvent(
+                source=self.name,
+                data={"job_id": job_id, "agent": self.name},
+            )
+        )
 
-        start_time = time.time()
+        last_error: Exception | None = None
 
-        try:
-            result = self.process(state)
-            elapsed = time.time() - start_time
+        for attempt in range(self.max_retries + 1):
+            start_time = time.time()
+            try:
+                result = self.process(state)
+                elapsed = time.time() - start_time
 
-            self.logger.info(f"[{job_id}] Agent {self.name} completed in {elapsed:.2f}s")
-            publish_agent_complete(
-                job_id,
-                self.name,
-                {
-                    "duration_seconds": round(elapsed, 2),
-                    "has_results": bool(result),
+                # Record success metrics
+                metrics.record_agent_execution(self.name, elapsed, success=True)
+
+                self.logger.info(
+                    "[%s] Agent %s completed in %.2fs (attempt %d)",
+                    job_id,
+                    self.name,
+                    elapsed,
+                    attempt + 1,
+                )
+                publish_agent_complete(
+                    job_id,
+                    self.name,
+                    {
+                        "duration_seconds": round(elapsed, 2),
+                        "has_results": bool(result),
+                        "attempt": attempt + 1,
+                    },
+                )
+                event_bus.emit_sync(
+                    AgentCompletedEvent(
+                        source=self.name,
+                        data={
+                            "job_id": job_id,
+                            "agent": self.name,
+                            "duration": round(elapsed, 2),
+                        },
+                    )
+                )
+
+                return {
+                    "results": {self.name: result},
+                    "messages": [
+                        {
+                            "agent": self.name,
+                            "event": "completed",
+                            "duration": round(elapsed, 2),
+                            "attempt": attempt + 1,
+                            "timestamp": time.time(),
+                        }
+                    ],
+                    "completed_agents": [self.name],
+                    "current_agent": self.name,
+                }
+
+            except Exception as e:
+                elapsed = time.time() - start_time
+                last_error = e
+
+                if attempt < self.max_retries and _is_retryable(e):
+                    delay = min(
+                        _RUN_BASE_DELAY * (2**attempt) + random.uniform(0, 1),
+                        _RUN_MAX_DELAY,
+                    )
+                    self.logger.warning(
+                        "[%s] Agent %s transient failure (attempt %d), retrying in %.1fs: %s",
+                        job_id,
+                        self.name,
+                        attempt + 1,
+                        delay,
+                        e,
+                    )
+                    time.sleep(delay)
+                    continue
+
+                # Non-retryable or final attempt
+                break
+
+        # All retries exhausted -- produce error delta
+        elapsed = time.time() - start_time
+        error_msg = f"{self.name} failed: {last_error}"
+        self.logger.error("[%s] %s\n%s", job_id, error_msg, traceback.format_exc())
+
+        metrics.record_agent_execution(self.name, elapsed, success=False)
+        publish_agent_error(job_id, self.name, str(last_error))
+        event_bus.emit_sync(
+            AgentFailedEvent(
+                source=self.name,
+                data={
+                    "job_id": job_id,
+                    "agent": self.name,
+                    "error": str(last_error),
                 },
             )
+        )
 
-            return {
-                "results": {self.name: result},
-                "messages": [
-                    {
-                        "agent": self.name,
-                        "event": "completed",
-                        "duration": round(elapsed, 2),
-                        "timestamp": time.time(),
-                    }
-                ],
-                "completed_agents": [self.name],
-                "current_agent": self.name,
-            }
-
-        except Exception as e:
-            elapsed = time.time() - start_time
-            error_msg = f"{self.name} failed: {str(e)}"
-            self.logger.error(f"[{job_id}] {error_msg}\n{traceback.format_exc()}")
-
-            publish_agent_error(job_id, self.name, str(e))
-
-            return {
-                "results": {self.name: {"error": str(e)}},
-                "messages": [
-                    {
-                        "agent": self.name,
-                        "event": "error",
-                        "error": str(e),
-                        "duration": round(elapsed, 2),
-                        "timestamp": time.time(),
-                    }
-                ],
-                "completed_agents": [self.name],
-                "current_agent": self.name,
-            }
+        return {
+            "results": {self.name: {"error": str(last_error)}},
+            "messages": [
+                {
+                    "agent": self.name,
+                    "event": "error",
+                    "error": str(last_error),
+                    "duration": round(elapsed, 2),
+                    "attempts": self.max_retries + 1,
+                    "timestamp": time.time(),
+                }
+            ],
+            "completed_agents": [self.name],
+            "current_agent": self.name,
+        }
