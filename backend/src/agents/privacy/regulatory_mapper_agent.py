@@ -1,5 +1,6 @@
 """
 Regulatory Mapper Agent - maps findings to GDPR, CCPA, DPDP Act, EU AI Act.
+Enriched with RAG knowledge base for exact article references and precedents.
 Generates professional compliance reports.
 """
 
@@ -8,6 +9,7 @@ import logging
 
 from src.agents.base_agent import BaseAgent
 from src.agents.state import AgentState
+from src.rag import search_similar
 
 logger = logging.getLogger(__name__)
 
@@ -93,13 +95,32 @@ class RegulatoryMapperAgent(BaseAgent):
             default=str,
         )[:6000]
 
+        # Query RAG for regulatory knowledge and precedents
+        rag_context = ""
+        try:
+            rag_results = search_similar(
+                query="GDPR CCPA compliance articles requirements data protection",
+                top_k=5,
+                category_filter="regulatory",
+            )
+            if rag_results:
+                rag_articles = "\n".join(
+                    [f"- [{r['dataset_name']}] {r['content'][:250]}..." for r in rag_results]
+                )
+                rag_context = f"\n\nRegulatory knowledge base references:\n{rag_articles}"
+                logger.info(
+                    f"Found {len(rag_results)} regulatory references for compliance mapping"
+                )
+        except Exception as e:
+            logger.warning(f"RAG regulatory lookup failed: {e}. Continuing with base regulations.")
+
         prompt = f"""You are a regulatory compliance expert mapping security and privacy findings to international regulations.
 
 Findings to map:
 {all_findings}
 
 Regulations to check against:
-{json.dumps(REGULATIONS, indent=2)[:3000]}
+{json.dumps(REGULATIONS, indent=2)[:3000]}{rag_context}
 
 For each regulation, identify:
 1. Which specific articles/sections are relevant
@@ -181,7 +202,7 @@ Return JSON:
         try:
             result = self.generate_json(
                 prompt,
-                system_instruction="You are a regulatory compliance expert with deep knowledge of GDPR, CCPA, India's DPDP Act, and the EU AI Act. Be specific about article references.",
+                system_instruction="You are a regulatory compliance expert with deep knowledge of GDPR, CCPA, India's DPDP Act, and the EU AI Act. Be specific about article references. Use regulatory knowledge base to cite precedents.",
             )
             result["status"] = "success"
             return result

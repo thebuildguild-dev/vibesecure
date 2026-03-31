@@ -1,6 +1,7 @@
 """
 Ensemble Voter Agent - combines all deepfake detection results.
 Performs majority vote + confidence scoring + RAG knowledge base lookup.
+Uses PgVector RAG to search deepfake knowledge base for similar cases.
 """
 
 import json
@@ -8,6 +9,7 @@ import logging
 
 from src.agents.base_agent import BaseAgent
 from src.agents.state import AgentState
+from src.rag import search_similar
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +117,26 @@ class EnsembleVoterAgent(BaseAgent):
             final_confidence = int(avg_confidence * agreement_ratio)
 
         # RAG knowledge base similarity check
+        # Query deepfake knowledge base for similar cases
+        rag_context = ""
+        try:
+            rag_results = search_similar(
+                query=f"artifact types: {artifact_types}, anomalies: {anomaly_count}, verdict: {final_verdict}",
+                top_k=3,
+                category_filter="deepfake",
+            )
+            if rag_results:
+                rag_articles = "\n".join(
+                    [
+                        f"- [{r['dataset_name']}] {r['content'][:200]}... (similarity: {r['similarity']:.2f})"
+                        for r in rag_results
+                    ]
+                )
+                rag_context = f"\n\nKnowledge base matches:\n{rag_articles}"
+                logger.info(f"Found {len(rag_results)} similar deepfake cases in RAG")
+        except Exception as e:
+            logger.warning(f"RAG knowledge base search failed: {e}. Continuing without context.")
+
         prompt = f"""You are a deepfake detection expert with knowledge of major deepfake datasets and techniques.
 
 Given these analysis results:
@@ -124,8 +146,8 @@ Given these analysis results:
 - Anomaly count: {anomaly_count}
 - Ensemble verdict: {final_verdict}
 
-Compare against known patterns from these reference datasets:
-{json.dumps(REFERENCE_DATASETS)}
+Reference datasets:
+{json.dumps(REFERENCE_DATASETS)}{rag_context}
 
 Return JSON:
 {{
@@ -148,10 +170,10 @@ Return JSON:
                 system_instruction="You are a deepfake forensics expert. Provide clear explanations.",
             )
         except Exception as e:
-            logger.error(f"RAG lookup failed: {e}")
+            logger.error(f"Gemini analysis failed: {e}")
             rag_result = {
                 "dataset_matches": [],
-                "plain_english_explanation": "Analysis complete but reference matching unavailable.",
+                "plain_english_explanation": "Analysis complete but detailed comparison unavailable.",
                 "heatmap_regions": [],
                 "generation_technique_guess": "Unknown",
             }

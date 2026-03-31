@@ -354,3 +354,85 @@ async def get_agent_result(
             "result": agent_results[agent_name],
         }
     )
+
+
+@router.get("/{job_id}/rag-sources")
+async def get_rag_sources(
+    job_id: str,
+    user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Extract RAG knowledge base sources and citations from agent results.
+
+    Returns knowledge base articles that were used to enrich analysis.
+    Useful for frontend to show "sources" and "references" sections.
+    """
+    user_email = user.get("email", "")
+
+    job = session.get(GovernanceJob, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.user_email != user_email:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    agent_results = job.agent_results or {}
+    sources = {
+        "deepfake": [],
+        "threat_intel": [],
+        "regulatory": [],
+    }
+
+    # Extract RAG context from deepfake agents
+    if "ensemble_voter" in agent_results:
+        rag_analysis = agent_results["ensemble_voter"].get("rag_analysis", {})
+        if rag_analysis and rag_analysis.get("dataset_matches"):
+            for match in rag_analysis["dataset_matches"]:
+                sources["deepfake"].append(
+                    {
+                        "agent": "ensemble_voter",
+                        "dataset": match.get("dataset", "Unknown"),
+                        "technique": match.get("technique"),
+                        "similarity": match.get("similarity", 0),
+                        "notes": match.get("notes"),
+                    }
+                )
+
+    # Extract threat intel sources
+    if "threat_pattern" in agent_results:
+        threats = agent_results["threat_pattern"].get("threats_found", [])
+        for threat in threats[:3]:
+            sources["threat_intel"].append(
+                {
+                    "agent": "threat_pattern",
+                    "technique_id": threat.get("technique_id"),
+                    "technique_name": threat.get("technique_name"),
+                    "severity": threat.get("severity"),
+                }
+            )
+
+    # Extract regulatory sources
+    for agent_name in ["privacy_scanner", "regulatory_mapper"]:
+        if agent_name in agent_results:
+            result = agent_results[agent_name]
+            for regulation in ["gdpr_mapping", "ccpa_mapping", "dpdp_mapping", "eu_ai_act_mapping"]:
+                if regulation in result:
+                    reg_data = result[regulation]
+                    if reg_data.get("violations"):
+                        for violation in reg_data["violations"][:2]:
+                            sources["regulatory"].append(
+                                {
+                                    "agent": agent_name,
+                                    "regulation": regulation.replace("_mapping", "").upper(),
+                                    "article": violation.get("article") or violation.get("section"),
+                                    "title": violation.get("title"),
+                                    "status": violation.get("status"),
+                                }
+                            )
+
+    return JSONResponse(
+        content={
+            "job_id": job.id,
+            "sources": sources,
+            "summary": f"Found {sum(len(v) for v in sources.values())} knowledge base references across all analyses",
+        }
+    )

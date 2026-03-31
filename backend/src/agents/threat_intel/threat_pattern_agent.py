@@ -11,6 +11,7 @@ import httpx
 
 from src.agents.base_agent import BaseAgent
 from src.agents.state import AgentState
+from src.rag import search_similar
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +56,32 @@ class ThreatPatternAgent(BaseAgent):
 
     def _analyze_content_threats(self, content: str) -> dict:
         """Analyze uploaded content for AI-related threats."""
+        # Query RAG for similar threat patterns
+        rag_context = ""
+        try:
+            rag_results = search_similar(
+                query=content[:1000],
+                top_k=3,
+                category_filter="threat_intel",
+            )
+            if rag_results:
+                rag_articles = "\n".join(
+                    [
+                        f"- [{r['dataset_name']}] {r['content'][:150]}... (match: {r['similarity']:.2f})"
+                        for r in rag_results
+                    ]
+                )
+                rag_context = f"\n\nRelated threat patterns from knowledge base:\n{rag_articles}"
+                logger.info(f"Found {len(rag_results)} similar threat patterns in RAG")
+        except Exception as e:
+            logger.warning(f"RAG threat lookup failed: {e}. Continuing without context.")
+
         prompt = f"""You are an AI threat intelligence analyst using the MITRE ATLAS framework.
 
 Analyze the following content for AI-related threats and adversarial patterns:
 
 Content (truncated to 3000 chars):
-{content[:3000]}
+{content[:3000]}{rag_context}
 
 Check for:
 1. Hidden adversarial patterns or payloads

@@ -1,6 +1,7 @@
 """
 Privacy Scanner Agent - detects PII, consent banner issues, and privacy policy gaps.
 Uses Gemini vision capabilities for page analysis.
+Enriched with regulatory knowledge from RAG.
 """
 
 import json
@@ -11,6 +12,7 @@ from bs4 import BeautifulSoup
 
 from src.agents.base_agent import BaseAgent
 from src.agents.state import AgentState
+from src.rag import search_similar
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +106,26 @@ class PrivacyScannerAgent(BaseAgent):
 
         results = {}
 
+        # Query RAG for regulatory standards
+        rag_context = ""
+        try:
+            rag_results = search_similar(
+                query="privacy policy consent banner GDPR requirements regulations",
+                top_k=3,
+                category_filter="regulatory",
+            )
+            if rag_results:
+                rag_articles = "\n".join(
+                    [
+                        f"- [{r['dataset_name']}] Section: {r['content'][:200]}..."
+                        for r in rag_results
+                    ]
+                )
+                rag_context = f"\n\nRegulatory requirements from knowledge base:\n{rag_articles}"
+                logger.info(f"Found {len(rag_results)} regulatory references for privacy scan")
+        except Exception as e:
+            logger.warning(f"RAG regulatory lookup failed: {e}. Continuing without context.")
+
         if url:
             html, text = self._fetch_page_content(url)
 
@@ -112,7 +134,7 @@ class PrivacyScannerAgent(BaseAgent):
                 results["consent_banner"] = self._check_consent_banner(html)
                 results["privacy_policy"] = self._check_privacy_policy(html, url)
 
-                # AI-powered analysis
+                # AI-powered analysis with RAG context
                 prompt = f"""You are a data privacy analyst scanning a website for privacy issues.
 
 URL: {url}
@@ -122,7 +144,7 @@ Page text (sample):
 
 HTML indicators found:
 - Consent banner: {json.dumps(results.get("consent_banner", {}), indent=2)}
-- Privacy policy: {json.dumps(results.get("privacy_policy", {}), indent=2)}
+- Privacy policy: {json.dumps(results.get("privacy_policy", {}), indent=2)}{rag_context}
 
 Analyze for:
 1. PII EXPOSURE: Visible personal data (emails, phone numbers, addresses, names)
@@ -163,7 +185,7 @@ Return JSON:
                 try:
                     ai_analysis = self.generate_json(
                         prompt,
-                        system_instruction="You are a data privacy analyst. Be thorough and identify real privacy issues.",
+                        system_instruction="You are a data privacy analyst. Be thorough and identify real privacy issues. Consider regulatory requirements from the knowledge base.",
                     )
                     results["ai_analysis"] = ai_analysis
                 except Exception as e:

@@ -162,4 +162,69 @@ export const scans = {
     fetchWithAuth(`/scans/${scanId}/fix-config?platform=${platform}`),
 };
 
+export const governance = {
+  create: (jobData) =>
+    fetchWithAuth("/governance", {
+      method: "POST",
+      body: JSON.stringify(jobData),
+    }),
+
+  list: (skip = 0, limit = 20, serviceType = null) => {
+    const params = new URLSearchParams();
+    params.append("skip", skip);
+    params.append("limit", limit);
+    if (serviceType) params.append("service_type", serviceType);
+    return fetchWithAuth(`/governance?${params.toString()}`);
+  },
+
+  get: (jobId) => fetchWithAuth(`/governance/${jobId}`),
+
+  getBundle: (jobId) => fetchWithAuth(`/governance/${jobId}/bundle`),
+
+  getAgentResult: (jobId, agentName) =>
+    fetchWithAuth(`/governance/${jobId}/agent/${agentName}`),
+
+  getRagSources: (jobId) => fetchWithAuth(`/governance/${jobId}/rag-sources`),
+
+  uploadFile: (file, serviceType = "deepfake") => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("service_type", serviceType);
+    return fetchWithAuth("/governance/upload", {
+      method: "POST",
+      headers: {},
+      body: formData,
+    });
+  },
+
+  getEvents: (jobId, lastId = "0-0") =>
+    fetchWithAuth(`/governance/${jobId}/events?last_id=${lastId}`),
+};
+
+export const rag = {
+  search: (query, topK = 5, category = null, dataset = null) =>
+    fetchWithAuth("/rag/search", {
+      method: "POST",
+      body: JSON.stringify({
+        query,
+        top_k: topK,
+        category,
+        dataset,
+      }),
+    }),
+
+  upsert: (categories = ["deepfake", "threat_intel", "regulatory"]) =>
+    fetchWithAuth("/rag/upsert", {
+      method: "POST",
+      body: JSON.stringify({ categories }),
+    }),
+
+  stats: () => fetchWithAuth("/rag/stats"),
+
+  init: () =>
+    fetchWithAuth("/rag/init", {
+      method: "POST",
+    }),
+};
+
 export { APIError };
