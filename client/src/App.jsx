@@ -9,6 +9,7 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import ScanDetail from "./pages/ScanDetail";
 import Profile from "./pages/Profile";
+import GovernanceDetail from "./pages/GovernanceDetail";
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -75,6 +76,14 @@ function App() {
               </ProtectedRoute>
             }
           />{" "}
+          <Route
+            path="/governance/:jobId"
+            element={
+              <ProtectedRoute>
+                <GovernanceDetail />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </Router>
     </AuthProvider>
