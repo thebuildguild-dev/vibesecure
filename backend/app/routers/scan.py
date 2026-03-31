@@ -202,7 +202,7 @@ def create_scan(
         from celery import Celery
 
         celery_app = Celery(broker=settings.redis_url)
-        task = celery_app.send_task("src.worker.tasks.process_scan", args=[db_scan.id, db_scan.url])
+        task = celery_app.send_task("app.worker.tasks.process_scan", args=[db_scan.id, db_scan.url])
         db_scan.celery_task_id = task.id
         session.add(db_scan)
         session.commit()
