@@ -41,6 +41,7 @@ SCORECARD_DIMENSIONS = [
 class ResponsibleAIAuditorAgent(BaseAgent):
     name = "responsible_ai_auditor"
     description = "Evaluates AI systems against NIST AI RMF and Google SAIF frameworks"
+    is_brain = True
 
     def process(self, state: AgentState) -> dict:
         input_data = state.get("input_data", {})

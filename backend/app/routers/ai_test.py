@@ -14,12 +14,12 @@ from sqlmodel import Session, select
 from app.agents.messaging import read_events
 from app.core.database import get_session
 from app.dependencies import get_current_user
-from app.models import (
+from app.models.audit import (
     GovernanceJob,
     JobStatus,
     ServiceType,
 )
-from app.schemas import (
+from app.schemas.ai_test import (
     GovernanceJobCreate,
     GovernanceJobDetail,
     GovernanceJobRead,

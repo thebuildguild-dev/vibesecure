@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from celery import Task
 from sqlmodel import Session, create_engine
 
-from app.models import GovernanceJob, JobStatus
+from app.models.audit import GovernanceJob, JobStatus
 from app.worker.celery_app import DATABASE_URL, celery_app
 
 logger = logging.getLogger(__name__)

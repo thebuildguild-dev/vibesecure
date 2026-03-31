@@ -1,12 +1,12 @@
 import io
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlmodel import Session
 
-from app.models import (
-    Scan,
+from app.models.scan import (
     Finding,
+    Scan,
     Severity,
     get_findings_for_scan,
     get_risk_label,
@@ -14,18 +14,25 @@ from app.models import (
 
 try:
     from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     from reportlab.lib.pagesizes import letter
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import inch
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, KeepTogether
-    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+    from reportlab.platypus import (
+        KeepTogether,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
 
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
 
 
-def _count_by_severity(findings: List[Finding]) -> Dict[str, int]:
+def _count_by_severity(findings: list[Finding]) -> dict[str, int]:
     counts = {s.value: 0 for s in Severity}
     for f in findings:
         counts[f.severity.value] += 1
@@ -42,7 +49,7 @@ def _severity_color(level: str):
     }.get(level, colors.grey)
 
 
-def _risk_color(score: Optional[int]):
+def _risk_color(score: int | None):
     if score is None:
         return colors.grey
     if score > 80:
@@ -54,7 +61,7 @@ def _risk_color(score: Optional[int]):
     return colors.HexColor("#16a34a")
 
 
-def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
+def generate_pdf_report(scan: Scan, findings: list[Finding]) -> bytes:
     if not REPORTLAB_AVAILABLE:
         raise ImportError("Install reportlab to generate PDF reports")
 
@@ -69,7 +76,7 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
     )
 
     styles = getSampleStyleSheet()
-    
+
     style_title = ParagraphStyle(
         "ReportTitle",
         parent=styles["Heading1"],
@@ -78,7 +85,7 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
         alignment=TA_CENTER,
         spaceAfter=12,
     )
-    
+
     style_subtitle = ParagraphStyle(
         "ReportSubtitle",
         parent=styles["Normal"],
@@ -86,7 +93,7 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
         textColor=colors.HexColor("#64748b"),
         alignment=TA_CENTER,
     )
-    
+
     style_finding_title = ParagraphStyle(
         "FindingTitle",
         parent=styles["Normal"],
@@ -95,7 +102,7 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
         textColor=colors.HexColor("#0f172a"),
         leading=14,
     )
-    
+
     style_finding_sev = ParagraphStyle(
         "FindingSev",
         parent=styles["Normal"],
@@ -104,7 +111,7 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
         textColor=colors.white,
         alignment=TA_CENTER,
     )
-    
+
     style_meta = ParagraphStyle(
         "Meta",
         parent=styles["Normal"],
@@ -112,7 +119,7 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
         textColor=colors.HexColor("#475569"),
         fontName="Helvetica",
     )
-    
+
     style_remediation = ParagraphStyle(
         "Remediation",
         parent=styles["Normal"],
@@ -140,7 +147,7 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
     info_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f1f5f9")), 
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f1f5f9")),
                 ("BACKGROUND", (1, 0), (-1, -1), colors.white),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
                 ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
@@ -158,7 +165,7 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
     counts = _count_by_severity(findings)
 
     col_w = 7.7 * inch / 5.0
-    
+
     summary_data = [
         [
             str(counts["critical"]),
@@ -177,7 +184,7 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
                 ("BACKGROUND", (0, 0), (-1, -1), colors.white),
                 ("GRID", (0, 0), (-1, -1), 1, colors.HexColor("#e2e8f0")),
                 # Numbers Row (Row 0)
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#0f172a")), 
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, 0), 24),
                 ("ALIGN", (0, 0), (-1, 0), "CENTER"),
@@ -185,9 +192,8 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
                 # Adjusted padding for Numbers to prevent touching lines
                 ("TOPPADDING", (0, 0), (-1, 0), 10),
                 ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
-                
                 # Labels Row (Row 1)
-                ("TEXTCOLOR", (0, 1), (-1, 1), colors.HexColor("#64748b")), 
+                ("TEXTCOLOR", (0, 1), (-1, 1), colors.HexColor("#64748b")),
                 ("FONTNAME", (0, 1), (-1, 1), "Helvetica"),
                 ("FONTSIZE", (0, 1), (-1, 1), 10),
                 ("ALIGN", (0, 1), (-1, 1), "CENTER"),
@@ -204,7 +210,7 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
     if findings:
         story.append(Paragraph("Detailed Findings", styles["Heading2"]))
         story.append(Spacer(1, 0.2 * inch))
-        
+
         severity_order = ["critical", "high", "medium", "low", "info"]
         findings_sorted = sorted(
             findings,
@@ -214,30 +220,37 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
         for f in findings_sorted:
             title_p = Paragraph(f.title, style_finding_title)
             sev_p = Paragraph(f.severity.value.upper(), style_finding_sev)
-            
-            path_safe = (f.path or 'N/A').replace('&', '&amp;').replace('<', '&lt;')
-            meta_str = f"<b>Confidence:</b> {f.confidence}% &nbsp;&nbsp;&nbsp; <b>Path:</b> {path_safe}"
+
+            path_safe = (f.path or "N/A").replace("&", "&amp;").replace("<", "&lt;")
+            meta_str = (
+                f"<b>Confidence:</b> {f.confidence}% &nbsp;&nbsp;&nbsp; <b>Path:</b> {path_safe}"
+            )
             meta_p = Paragraph(meta_str, style_meta)
-            
-            remediation_safe = (f.remediation or 'No specific remediation steps provided.').replace('&', '&amp;').replace('<', '&lt;').replace('\n', '<br/>')
+
+            remediation_safe = (
+                (f.remediation or "No specific remediation steps provided.")
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace("\n", "<br/>")
+            )
             rem_str = f"<b>Remediation:</b><br/>{remediation_safe}"
             rem_p = Paragraph(rem_str, style_remediation)
-            
+
             item_data = [
                 [title_p, sev_p],
                 [meta_p, ""],
                 [rem_p, ""],
             ]
-            
+
             t = Table(item_data, colWidths=[6.5 * inch, 1.2 * inch])
-            
+
             sev_bg = _severity_color(f.severity.value)
-            
+
             t.setStyle(
                 TableStyle(
                     [
                         ("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#f8fafc")),
-                        ("BACKGROUND", (1, 0), (1, 0), sev_bg),                    
+                        ("BACKGROUND", (1, 0), (1, 0), sev_bg),
                         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                         ("TOPPADDING", (0, 0), (-1, -1), 8),
                         ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
@@ -248,13 +261,24 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
                     ]
                 )
             )
-            
+
             story.append(KeepTogether(t))
             story.append(Spacer(1, 0.25 * inch))
 
-    footer_text = f"Generated by VibeSecure on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
+    footer_text = f"Generated by VibeSecure on {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}"
     story.append(Spacer(1, 0.5 * inch))
-    story.append(Paragraph(footer_text, ParagraphStyle("Footer", parent=styles["Normal"], alignment=TA_CENTER, textColor=colors.grey, fontSize=8)))
+    story.append(
+        Paragraph(
+            footer_text,
+            ParagraphStyle(
+                "Footer",
+                parent=styles["Normal"],
+                alignment=TA_CENTER,
+                textColor=colors.grey,
+                fontSize=8,
+            ),
+        )
+    )
 
     doc.build(story)
     pdf = buffer.getvalue()
@@ -262,7 +286,7 @@ def generate_pdf_report(scan: Scan, findings: List[Finding]) -> bytes:
     return pdf
 
 
-def generate_json_report(scan: Scan, findings: List[Finding]) -> Dict[str, Any]:
+def generate_json_report(scan: Scan, findings: list[Finding]) -> dict[str, Any]:
     return {
         "scan": {
             "id": scan.id,
@@ -287,11 +311,11 @@ def generate_json_report(scan: Scan, findings: List[Finding]) -> Dict[str, Any]:
             }
             for f in findings
         ],
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
 
 
-def export_report(scan_id: str, session: Session, output_format: str = "json") -> Dict[str, Any]:
+def export_report(scan_id: str, session: Session, output_format: str = "json") -> dict[str, Any]:
     scan = session.get(Scan, scan_id)
     if not scan:
         return {"status": "error", "error": "Scan not found"}

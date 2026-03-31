@@ -52,6 +52,7 @@ MITRE_ATLAS_TECHNIQUES = {
 class ThreatPatternAgent(BaseAgent):
     name = "threat_pattern"
     description = "AI threat intelligence using MITRE ATLAS framework + safe AI system testing"
+    is_brain = True
 
     def _analyze_content_threats(self, content: str) -> dict:
         """Analyze uploaded content for AI-related threats."""

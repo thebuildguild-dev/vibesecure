@@ -25,6 +25,7 @@ class EnsembleVoterAgent(BaseAgent):
     description = (
         "Combines all deepfake detection results with majority vote and confidence scoring"
     )
+    is_brain = True
 
     def process(self, state: AgentState) -> dict:
         results = state.get("results", {})

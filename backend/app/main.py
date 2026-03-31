@@ -6,7 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db
 from app.core.middleware import RateLimitMiddleware
-from app.routers import auth_router, consent_router, domains_router, governance_router, scans_router
+from app.routers.ai_test import router as governance_router
+from app.routers.auth import router as auth_router
+from app.routers.consent import router as consent_router
+from app.routers.domain import router as domains_router
+from app.routers.scan import router as scans_router
 
 
 @asynccontextmanager

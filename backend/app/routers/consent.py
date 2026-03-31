@@ -1,17 +1,14 @@
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
-from app.dependencies import get_current_user_email
 from app.core.database import get_session
-from app.models import Consent, DomainVerification
-from app.utils.consent import (
-    check_active_consent,
-    consent_file_url,
-    generate_consent_file_content
-)
+from app.dependencies import get_current_user_email
+from app.models.consent import Consent
+from app.models.domain import DomainVerification
+from app.utils.consent import check_active_consent, consent_file_url, generate_consent_file_content
 from app.utils.domain import normalize_domain
 
 router = APIRouter(prefix="/consent", tags=["consent"])
@@ -40,7 +37,7 @@ class ConsentCheckBody(BaseModel):
 class ConsentCheckResponse(BaseModel):
     domain: str
     active_consent_verified: bool
-    verified_at: Optional[datetime] = None
+    verified_at: datetime | None = None
     message: str
 
 
@@ -51,27 +48,27 @@ async def request_active_consent(
     session: Session = Depends(get_session),
 ):
     domain = normalize_domain(request.domain)
-    
+
     verification = session.exec(
         select(DomainVerification)
         .where(DomainVerification.domain == domain)
         .where(DomainVerification.user_email == user_email)
         .where(DomainVerification.verified == True)
     ).first()
-    
+
     if not verification:
         raise HTTPException(
             status_code=400,
-            detail=f"Domain {domain} is not verified. Complete domain verification first at POST /api/domains/verify/request"
+            detail=f"Domain {domain} is not verified. Complete domain verification first at POST /api/domains/verify/request",
         )
-    
+
     consent_content = generate_consent_file_content(domain, user_email)
-    
+
     instructions = ConsentInstructions(
         path="/.well-known/vibesecure-consent.txt",
         content=consent_content,
     )
-    
+
     return ConsentRequestResponse(
         domain=domain,
         user_email=user_email,
@@ -87,22 +84,22 @@ async def check_consent(
     session: Session = Depends(get_session),
 ):
     domain = normalize_domain(request.domain)
-    
+
     verification = session.exec(
         select(DomainVerification)
         .where(DomainVerification.domain == domain)
         .where(DomainVerification.user_email == user_email)
         .where(DomainVerification.verified == True)
     ).first()
-    
+
     if not verification:
         raise HTTPException(
             status_code=400,
-            detail=f"Domain {domain} is not verified. Complete domain verification first."
+            detail=f"Domain {domain} is not verified. Complete domain verification first.",
         )
-    
+
     is_valid = check_active_consent(domain, user_email)
-    
+
     if not is_valid:
         return ConsentCheckResponse(
             domain=domain,
@@ -110,21 +107,19 @@ async def check_consent(
             verified_at=None,
             message=f"Active scan consent NOT found. Place consent file at {consent_file_url(domain)}",
         )
-    
+
     existing_consent = session.exec(
-        select(Consent)
-        .where(Consent.domain == domain)
-        .where(Consent.user_email == user_email)
+        select(Consent).where(Consent.domain == domain).where(Consent.user_email == user_email)
     ).first()
-    
+
     if existing_consent:
         existing_consent.active_allowed = True
-        existing_consent.verified_at = datetime.now(timezone.utc)
+        existing_consent.verified_at = datetime.now(UTC)
         existing_consent.method = "well-known"
         session.add(existing_consent)
         session.commit()
         session.refresh(existing_consent)
-        
+
         return ConsentCheckResponse(
             domain=domain,
             active_consent_verified=True,
@@ -136,13 +131,13 @@ async def check_consent(
             domain=domain,
             user_email=user_email,
             active_allowed=True,
-            verified_at=datetime.now(timezone.utc),
+            verified_at=datetime.now(UTC),
             method="well-known",
         )
         session.add(consent)
         session.commit()
         session.refresh(consent)
-        
+
         return ConsentCheckResponse(
             domain=domain,
             active_consent_verified=True,
@@ -158,13 +153,11 @@ async def get_consent_status(
     session: Session = Depends(get_session),
 ):
     domain = normalize_domain(domain)
-    
+
     consent = session.exec(
-        select(Consent)
-        .where(Consent.domain == domain)
-        .where(Consent.user_email == user_email)
+        select(Consent).where(Consent.domain == domain).where(Consent.user_email == user_email)
     ).first()
-    
+
     if not consent:
         return {
             "domain": domain,
@@ -173,7 +166,7 @@ async def get_consent_status(
             "verified_at": None,
             "message": "No active scan consent found. Call POST /api/consent/request to get started.",
         }
-    
+
     return {
         "id": consent.id,
         "domain": consent.domain,
@@ -192,11 +185,9 @@ async def list_consents(
     session: Session = Depends(get_session),
 ):
     consents = session.exec(
-        select(Consent)
-        .where(Consent.user_email == user_email)
-        .order_by(Consent.created_at.desc())
+        select(Consent).where(Consent.user_email == user_email).order_by(Consent.created_at.desc())
     ).all()
-    
+
     return {
         "consents": [
             {

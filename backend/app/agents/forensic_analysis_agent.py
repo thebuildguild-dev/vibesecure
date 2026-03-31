@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 class ForensicArtifactAgent(BaseAgent):
     name = "forensic_artifact"
     description = "Detailed frame-by-frame forensic analysis for deepfake detection"
+    is_brain = True
 
     def _analyze_frames(self, frames: list[str], file_type: str) -> dict:
         """Perform detailed forensic analysis on frames."""

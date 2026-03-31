@@ -72,6 +72,7 @@ REGULATIONS = {
 class RegulatoryMapperAgent(BaseAgent):
     name = "regulatory_mapper"
     description = "Maps privacy findings to GDPR, CCPA, DPDP Act, and EU AI Act regulations"
+    is_brain = True
 
     def process(self, state: AgentState) -> dict:
         input_data = state.get("input_data", {})

@@ -12,26 +12,26 @@ from sqlmodel import Session, SQLModel, select
 from app.core.config import settings
 from app.core.database import get_session
 from app.dependencies import get_current_user
-from app.models import (
-    DomainVerification,
+from app.models.domain import DomainVerification
+from app.models.scan import (
     Scan,
     ScanStatus,
     get_findings_for_scan,
     get_risk_label,
 )
-from app.models import (
+from app.models.scan import (
     create_finding as db_create_finding,
 )
-from app.models import (
+from app.models.scan import (
     create_scan as db_create_scan,
 )
-from app.models import (
+from app.models.scan import (
     get_scan as db_get_scan,
 )
-from app.models import (
+from app.models.scan import (
     update_scan_status as db_update_scan_status,
 )
-from app.schemas import (
+from app.schemas.scan import (
     FindingCreate,
     FindingRead,
     ScanCreate,
@@ -176,7 +176,7 @@ def create_scan(
 
     if allow_active:
         logger.warning(f"Active scanning requested for {domain} by {user_email}")
-        from app.models import Consent
+        from app.models.consent import Consent
 
         consent = session.exec(
             select(Consent)

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 class PredictiveRiskAgent(BaseAgent):
     name = "predictive_risk"
     description = "AI attack forecasting and risk prediction"
+    is_brain = True
 
     def process(self, state: AgentState) -> dict:
         input_data = state.get("input_data", {})

@@ -10,9 +10,10 @@ import logging
 from sqlmodel import Session, create_engine, select
 
 from app.agents.base_agent import BaseAgent
-from app.graphs.state import AgentState
 from app.core.config import settings
-from app.models import Consent, DomainVerification
+from app.graphs.state import AgentState
+from app.models.consent import Consent
+from app.models.domain import DomainVerification
 
 logger = logging.getLogger(__name__)
 

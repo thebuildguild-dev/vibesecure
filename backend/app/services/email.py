@@ -1,40 +1,38 @@
 import logging
 import time
+
 import resend
-from typing import Optional
 
 from app.core.config import settings
-from app.models import get_risk_label
+from app.models.scan import get_risk_label
 
 logger = logging.getLogger(__name__)
 
+
 def get_risk_color(risk_level: str) -> str:
     colors = {
-        "Critical": "#DC2626", 
-        "High": "#EA580C",     
-        "Medium": "#D97706",   
-        "Low": "#059669",      
-        "Secure": "#059669"    
+        "Critical": "#DC2626",
+        "High": "#EA580C",
+        "Medium": "#D97706",
+        "Low": "#059669",
+        "Secure": "#059669",
     }
     return colors.get(risk_level, "#6B7280")
 
+
 def send_scan_complete_email(
-    to_email: str, 
-    scan_url: str, 
-    risk_score: int, 
-    scan_id: int,
-    max_retries: int = 3
-) -> Optional[str]:
+    to_email: str, scan_url: str, risk_score: int, scan_id: int, max_retries: int = 3
+) -> str | None:
     resend.api_key = settings.resend_api_key
-    
+
     for attempt in range(max_retries):
         try:
             risk_level = get_risk_label(risk_score)
             risk_color = get_risk_color(risk_level)
             dashboard_url = f"{settings.frontend_url}/scan/{scan_id}"
-            
+
             subject = f"Security Scan Complete: {risk_level} Risk Detected"
-            
+
             html_body = f"""
         <!DOCTYPE html>
         <html>
@@ -108,7 +106,7 @@ def send_scan_complete_email(
         </body>
         </html>
             """
-            
+
             text_body = f"""
 VibeSecure Scan Complete
 ------------------------
@@ -122,31 +120,33 @@ View full report: {dashboard_url}
 ------------------------
 VibeSecure Automated System
             """
-            
+
             params = {
                 "from": settings.email_from,
                 "to": [to_email],
                 "subject": subject,
                 "html": html_body,
-                "text": text_body
+                "text": text_body,
             }
-        
+
             response = resend.Emails.send(params)
-            email_id = response.get('id', 'unknown')
+            email_id = response.get("id", "unknown")
             return email_id
-            
+
         except Exception as e:
             error_msg = str(e)
-            is_network_error = any([
-                "Failed to resolve" in error_msg,
-                "NameResolutionError" in error_msg,
-                "Max retries exceeded" in error_msg,
-                "Connection" in error_msg,
-                "Timeout" in error_msg
-            ])
-            
+            is_network_error = any(
+                [
+                    "Failed to resolve" in error_msg,
+                    "NameResolutionError" in error_msg,
+                    "Max retries exceeded" in error_msg,
+                    "Connection" in error_msg,
+                    "Timeout" in error_msg,
+                ]
+            )
+
             if is_network_error and attempt < max_retries - 1:
-                backoff = 2 ** attempt
+                backoff = 2**attempt
                 logger.warning(
                     f"Network error sending email to {to_email} (attempt {attempt + 1}/{max_retries}): {error_msg}. "
                     f"Retrying in {backoff}s..."
@@ -159,5 +159,5 @@ VibeSecure Automated System
                 )
                 if attempt == max_retries - 1:
                     return None
-    
+
     return None

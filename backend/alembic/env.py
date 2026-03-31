@@ -11,14 +11,10 @@ from app.core.config import settings
 from app.core.database import engine
 
 # Import all models so they are registered with SQLModel metadata
-from app.models import (  # noqa: F401
-    Consent,
-    DomainVerification,
-    DomainVerificationAudit,
-    Finding,
-    GovernanceJob,
-    Scan,
-)
+from app.models.audit import GovernanceJob  # noqa: F401
+from app.models.consent import Consent  # noqa: F401
+from app.models.domain import DomainVerification, DomainVerificationAudit  # noqa: F401
+from app.models.scan import Finding, Scan  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
