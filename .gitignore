@@ -151,3 +151,4 @@ celerybeat.pid
 # Misc
 *.orig
 .history/
+demo-website
